@@ -1,0 +1,110 @@
+[tool.poetry]
+name = "selfspy"
+version = "1.0.0"
+description = "A tool for monitoring and analyzing your computer activity"
+authors = ["nuin <nuin@genedrift.org>"]
+readme = "README.md"
+license = "GPL-3.0-or-later"
+homepage = "https://github.com/nuin/selfspy"
+repository = "https://github.com/nuin/selfspy"
+documentation = "https://github.com/nuin/selfspy/wiki"
+keywords = ["activity-monitor", "productivity", "analytics", "keylogger", "time-tracking"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: MacOS X",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Office/Business :: News/Diary",
+    "Topic :: System :: Monitoring"
+]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+SQLAlchemy = "^2.0.25"
+pynput = "^1.7.6"
+cryptography = "^41.0.7"  # Modern replacement for pycrypto
+keyring = "^24.3.0"
+python-dateutil = "^2.8.2"
+click = "^8.1.7"  # For better CLI handling
+appdirs = "^1.4.4"  # For better path handling
+rich = "^13.7.0"  # For better terminal output
+structlog = "^24.1.0"  # For better logging
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.4"
+pytest-cov = "^4.1.0"
+black = "^23.12.1"
+isort = "^5.13.2"
+mypy = "^1.8.0"
+ruff = "^0.1.11"
+pre-commit = "^3.6.0"
+
+[tool.poetry.scripts]
+selfspy = "selfspy.cli:main"
+selfstats = "selfspy.stats:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 100
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+
+[tool.ruff]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "C",  # flake8-comprehensions
+    "B",  # flake8-bugbear
+]
+ignore = []
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q --cov=selfspy"
+testpaths = [
+    "tests",
+]
+
+[tool.coverage.run]
+source = ["selfspy"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "pass",
+    "raise ImportError",
+]
