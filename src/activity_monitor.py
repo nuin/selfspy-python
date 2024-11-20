@@ -13,6 +13,9 @@ from pynput import mouse, keyboard
 from .config import Settings
 from .platform.darwin import MacOSWindowTracker
 
+import sys
+from pathlib import Path
+
 logger = structlog.get_logger()
 
 class ActivityMonitor:
@@ -29,6 +32,7 @@ class ActivityMonitor:
         self.current_window: Optional[Dict[str, str]] = None
         self.buffer: list[Dict[str, Any]] = []
         self.last_activity = datetime.now()
+        self.running = False
         
         # Configure logging
         log_level = logging.DEBUG if debug else logging.INFO
@@ -38,17 +42,22 @@ class ActivityMonitor:
         
         # Initialize platform-specific window tracker
         if platform.system() == 'Darwin':
-            self.window_tracker = MacOSWindowTracker()
+            try:
+                import Quartz
+                import AppKit
+                self.window_tracker = MacOSWindowTracker()
+            except ImportError:
+                logger.error("MacOS libraries not found. Please run: poetry install")
+                raise ImportError("Required macOS libraries not found. Run: poetry install")
         else:
-            raise NotImplementedError(
-                f"Platform {platform.system()} not supported"
-            )
+            raise NotImplementedError(f"Platform {platform.system()} not supported.")
         
-        # Initialize input listeners
+        # Initialize input listeners with all required callbacks
         self.keyboard_listener = keyboard.Listener(
             on_press=self._on_key_press,
             on_release=self._on_key_release
         )
+        
         self.mouse_listener = mouse.Listener(
             on_move=self._on_mouse_move,
             on_click=self._on_mouse_click,
@@ -64,30 +73,31 @@ class ActivityMonitor:
                 "Accessibility permissions required. Please enable in System Preferences."
             )
         
+        self.running = True
         self.keyboard_listener.start()
         self.mouse_listener.start()
         
-        try:
-            while True:
+        while self.running:
+            try:
                 await self._check_active_window()
                 await self._flush_buffer()
                 await asyncio.sleep(self.settings.active_window_check_interval)
-        except asyncio.CancelledError:
-            logger.info("Shutting down monitor...")
-            await self.stop()
-        except Exception as e:
-            logger.error("Monitor error", error=str(e))
-            await self.stop()
-            raise
+            except Exception as e:
+                logger.error("Monitor error", error=str(e))
+                if not self.settings.monitor_suppress_errors:
+                    raise
 
     async def stop(self):
         """Stop monitoring gracefully"""
         logger.info("Stopping activity monitor...")
+        self.running = False
         
-        self.keyboard_listener.stop()
-        self.mouse_listener.stop()
+        if self.keyboard_listener.running:
+            self.keyboard_listener.stop()
+        if self.mouse_listener.running:
+            self.mouse_listener.stop()
+            
         self.window_tracker.cleanup()
-        
         await self._flush_buffer()
         await self.store.close()
 
@@ -95,25 +105,20 @@ class ActivityMonitor:
         """Check current active window"""
         try:
             window_info = await self.window_tracker.get_active_window()
-            
             if window_info != self.current_window:
                 self.current_window = window_info
                 
-                # Get window geometry
+                # Get window geometry if enabled
+                geometry = None
                 if self.settings.track_window_geometry:
-                    x, y, width, height = self.window_tracker.get_window_geometry()
-                else:
-                    x = y = width = height = 0
+                    geometry = self.window_tracker.get_window_geometry()
                 
-                # Skip excluded bundles
-                if window_info['bundle'] in self.settings.excluded_bundles:
-                    return
-                
+                # Update window info
                 await self.store.update_window_info(
                     process_name=window_info['process'],
                     window_title=window_info['title'],
-                    bundle_id=window_info['bundle'],
-                    geometry=(x, y, width, height)
+                    bundle=window_info['bundle'],
+                    geometry=geometry
                 )
                 
         except Exception as e:
@@ -124,19 +129,40 @@ class ActivityMonitor:
         """Check required macOS permissions"""
         if not self.settings.check_accessibility:
             return True
-            
+        
         try:
-            import Quartz
-            trusted = Quartz.AXIsProcessTrusted()
+            from ApplicationServices import AXIsProcessTrusted
+            
+            # Direct check for accessibility permissions
+            trusted = AXIsProcessTrusted()
+            
             if not trusted:
-                logger.error(
-                    "Accessibility permissions required. "
-                    "Please enable in System Preferences > Security & Privacy > Privacy > Accessibility"
-                )
+                try:
+                    # Try to open System Settings
+                    import Foundation
+                    url_str = Foundation.NSString.stringWithString_(
+                        "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+                    )
+                    url = Foundation.NSURL.URLWithString_(url_str)
+                    Foundation.NSWorkspace.sharedWorkspace().openURL_(url)
+                    
+                    logger.info(
+                        "Waiting for accessibility permissions...\n"
+                        "Please enable access in System Settings when prompted"
+                    )
+                except Exception as e:
+                    logger.error("Failed to open System Settings", error=str(e))
+                    
             return trusted
+                    
+        except ImportError:
+            logger.error("MacOS libraries not found. Please run: poetry install")
+            raise ImportError("Required macOS libraries not found. Run: poetry install")
         except Exception as e:
-            logger.error("Permission check failed", error=str(e))
+            if not self.settings.monitor_suppress_errors:
+                logger.error("Permission check error", error=str(e))
             return False
+
 
     def _on_key_press(self, key):
         """Handle key press events"""

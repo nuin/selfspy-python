@@ -13,9 +13,9 @@ src_path = str(Path(__file__).parent.absolute())
 if src_path not in sys.path:
     sys.path.append(src_path)
 
-from monitor import ActivityMonitor
-from activity_store import ActivityStore
-from models import Process, Window, Keys, Click
+from .activity_monitor import ActivityMonitor
+from .activity_store import ActivityStore
+from .models import Process, Window, Keys, Click
 
 __all__ = [
     'ActivityMonitor',

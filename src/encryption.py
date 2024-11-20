@@ -9,6 +9,7 @@ from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import padding
+import base64
 
 MAGIC_STRING = b"selfspy-v2-verification-token"
 
@@ -21,10 +22,11 @@ def create_cipher(password: Optional[str]) -> Optional[Fernet]:
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
-        salt=b"selfspy-salt",  # In production, use a random salt
+        salt=b"selfspy-salt",
         iterations=100000,
     )
-    key = kdf.derive(password.encode())
+    derived_key = kdf.derive(password.encode())
+    key = base64.urlsafe_b64encode(derived_key)
     return Fernet(key)
 
 async def check_password(
