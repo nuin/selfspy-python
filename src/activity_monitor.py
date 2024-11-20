@@ -2,28 +2,26 @@
 Activity monitoring implementation
 """
 import asyncio
-import logging
 import platform
+import logging
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Dict, Any, Optional
 
 import structlog
-from pynput import mouse, keyboard
+from pynput import mouse
+import Quartz
 
+from .activity_store import ActivityStore
 from .config import Settings
-from .platform import MacOSWindowTracker, MacScreenCapture  # Updated import
-
-import sys
-from pathlib import Path
-
 from .platform.input_tracker import InputTracker
+from rich.live import Live
+from rich.table import Table
+from rich.layout import Layout
 
 logger = structlog.get_logger()
 
-
 class ActivityMonitor:
     """Activity monitor implementation"""
-    
     def __init__(
         self,
         settings: Settings,
@@ -37,163 +35,127 @@ class ActivityMonitor:
         self.last_activity = datetime.now()
         self.running = False
         
+        # Initialize stats
+        self.stats = {
+            'keystrokes': 0,
+            'clicks': 0,
+            'windows': 0,
+            'last_window': None,
+            'start_time': datetime.now()
+        }
+        self.live_display = None
+
         # Configure logging
         log_level = logging.DEBUG if debug else logging.INFO
         structlog.configure(
             wrapper_class=structlog.make_filtering_bound_logger(log_level)
         )
-        
-        # Initialize platform-specific window tracker
+
+        # Initialize platform-specific trackers
         try:
             if platform.system() == 'Darwin':
+                from .platform.darwin_input import MacOSInputTracker
                 from .platform.darwin import MacOSWindowTracker
                 self.window_tracker = MacOSWindowTracker()
+                self.input_tracker = MacOSInputTracker(
+                    on_key_press=self._on_key_press,
+                    on_key_release=self._on_key_release,
+                    on_mouse_move=self._on_mouse_move,
+                    on_mouse_click=self._on_mouse_click,
+                    on_scroll=self._on_scroll
+                )
             else:
                 from .platform.fallback import FallbackWindowTracker
                 self.window_tracker = FallbackWindowTracker()
-                logger.warning(f"Platform {platform.system()} has limited window tracking support")
+                self.input_tracker = InputTracker(
+                    on_key_press=self._on_key_press,
+                    on_key_release=self._on_key_release,
+                    on_mouse_move=self._on_mouse_move,
+                    on_mouse_click=self._on_mouse_click,
+                    on_scroll=self._on_scroll
+                )
+                logger.warning(f"Platform {platform.system()} has limited tracking support")
         except Exception as e:
-            logger.warning(f"Using fallback window tracker: {str(e)}")
+            logger.warning(f"Using fallback trackers: {str(e)}")
             from .platform.fallback import FallbackWindowTracker
             self.window_tracker = FallbackWindowTracker()
+            self.input_tracker = InputTracker(
+                on_key_press=self._on_key_press,
+                on_key_release=self._on_key_release,
+                on_mouse_move=self._on_mouse_move,
+                on_mouse_click=self._on_mouse_click,
+                on_scroll=self._on_scroll
+            )
+
+    def _generate_display(self) -> Layout:
+        """Generate live display layout"""
+        layout = Layout()
         
-        # Initialize input tracker
-        self.input_tracker = InputTracker(
-            on_key_press=self._on_key_press,
-            on_key_release=self._on_key_release,
-            on_mouse_move=self._on_mouse_move,
-            on_mouse_click=self._on_mouse_click,
-            on_scroll=self._on_scroll
-        )
+        # Activity summary table
+        summary = Table(title="Activity Summary")
+        summary.add_column("Metric", style="cyan")
+        summary.add_column("Value", style="green")
+        
+        duration = datetime.now() - self.stats['start_time']
+        hours = duration.total_seconds() / 3600
+        
+        summary.add_row("Session Duration", f"{duration.seconds // 3600}h {(duration.seconds % 3600) // 60}m")
+        summary.add_row("Keystrokes", str(self.stats['keystrokes']))
+        summary.add_row("Clicks", str(self.stats['clicks']))
+        summary.add_row("Windows", str(self.stats['windows']))
+        if self.stats['last_window']:
+            summary.add_row("Current Window", f"{self.stats['last_window']['process']} - {self.stats['last_window']['title']}")
+        
+        layout.update(summary)
+        return layout
 
     async def start(self):
         """Start monitoring asynchronously"""
         logger.info("Starting activity monitor...")
         
-        if not self._check_permissions():
-            raise PermissionError(
-                "Accessibility permissions required. Please enable in System Settings."
-            )
+        if platform.system() == 'Darwin':
+            if not Quartz.AXIsProcessTrusted():
+                logger.error("Accessibility permissions required")
+                raise PermissionError(
+                    "Accessibility permissions required. Run 'selfspy check-permissions' for help."
+                )
         
         self.running = True
-        self.input_tracker.start()
         
-        # Start screen capture if enabled
-        if hasattr(self, 'screen_capture') and self.settings.enable_screenshots:
-            await self.screen_capture.start_periodic_capture()
+        # Start input tracking
+        if not self.input_tracker.start():
+            raise RuntimeError("Failed to start input tracking")
             
-            # Schedule cleanup of old screenshots
-            if self.settings.screenshot_cleanup_days > 0:
-                asyncio.create_task(
-                    self._schedule_screenshot_cleanup(
-                        self.settings.screenshot_cleanup_days
-                    )
-                )
-        
-        while self.running:
-            try:
-                await self._check_active_window()
-                await self._flush_buffer()
-                await asyncio.sleep(self.settings.active_window_check_interval)
-            except Exception as e:
-                logger.error("Monitor error", error=str(e))
-                if not self.settings.monitor_suppress_errors:
-                    raise
+        with Live(self._generate_display(), refresh_per_second=1) as live:
+            self.live_display = live
+            while self.running:
+                try:
+                    await self._check_active_window()
+                    await self._flush_buffer()
+                    if self.live_display:
+                        self.live_display.update(self._generate_display())
+                    await asyncio.sleep(self.settings.active_window_check_interval)
+                except Exception as e:
+                    logger.error("Monitor error", error=str(e))
 
     async def stop(self):
-        """Stop monitoring gracefully"""
+        """Stop monitoring"""
         logger.info("Stopping activity monitor...")
         self.running = False
-        
-        if self.input_tracker.running:
-            self.input_tracker.stop()
-        
-        # Stop screen capture
-        if hasattr(self, 'screen_capture'):
-            await self.screen_capture.stop_periodic_capture()
-            
-        self.window_tracker.cleanup()
+        self.input_tracker.stop()
         await self._flush_buffer()
-        await self.store.close()
-
-    async def _check_active_window(self):
-        """Check current active window"""
-        try:
-            window_info = await self.window_tracker.get_active_window()
-            if window_info != self.current_window:
-                self.current_window = window_info
-                
-                # Get window geometry if enabled
-                geometry = None
-                if self.settings.track_window_geometry:
-                    geometry = self.window_tracker.get_window_geometry()
-                
-                # Update window info
-                await self.store.update_window_info(
-                    process_name=window_info['process'],
-                    window_title=window_info['title'],
-                    bundle=window_info['bundle'],
-                    geometry=geometry
-                )
-                
-                # Update screen capture if enabled
-                if hasattr(self, 'screen_capture') and self.settings.enable_screenshots:
-                    await self.screen_capture.update_window_info(window_info)
-                
-        except Exception as e:
-            if not self.settings.monitor_suppress_errors:
-                logger.error("Window check error", error=str(e))
-    
-    def _check_permissions(self) -> bool:
-        """Check required macOS permissions"""
-        if not self.settings.check_accessibility:
-            return True
-        
-        try:
-            from ApplicationServices import AXIsProcessTrusted
-            
-            # Direct check for accessibility permissions
-            trusted = AXIsProcessTrusted()
-            
-            if not trusted:
-                try:
-                    # Try to open System Settings
-                    import Foundation
-                    url_str = Foundation.NSString.stringWithString_(
-                        "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
-                    )
-                    url = Foundation.NSURL.URLWithString_(url_str)
-                    Foundation.NSWorkspace.sharedWorkspace().openURL_(url)
-                    
-                    logger.info(
-                        "Waiting for accessibility permissions...\n"
-                        "Please enable access in System Settings when prompted"
-                    )
-                except Exception as e:
-                    logger.error("Failed to open System Settings", error=str(e))
-                    
-            return trusted
-                    
-        except ImportError:
-            logger.error("MacOS libraries not found. Please run: poetry install")
-            raise ImportError("Required macOS libraries not found")
-        except Exception as e:
-            if not self.settings.monitor_suppress_errors:
-                logger.error("Permission check error", error=str(e))
-            return False
 
     def _on_key_press(self, key):
         """Handle key press events"""
         try:
             char = key.char if hasattr(key, 'char') else str(key)
-            
+            self.stats['keystrokes'] += 1
             self.buffer.append({
                 'type': 'key',
                 'key': char,
                 'time': datetime.now()
             })
             self.last_activity = datetime.now()
-            
         except Exception as e:
             logger.error("Key press error", error=str(e))
 
@@ -207,13 +169,14 @@ class ActivityMonitor:
 
     def _on_mouse_click(self, x: int, y: int, button: mouse.Button, pressed: bool):
         """Handle mouse clicks"""
-        if pressed:
-            try:
+        try:
+            if pressed:
                 button_num = 1 if button == mouse.Button.left else 3
+                self.stats['clicks'] += 1
                 asyncio.create_task(self.store.store_click(button_num, x, y))
                 self.last_activity = datetime.now()
-            except Exception as e:
-                logger.error("Mouse click error", error=str(e))
+        except Exception as e:
+            logger.error("Mouse click error", error=str(e))
 
     def _on_scroll(self, x: int, y: int, dx: int, dy: int):
         """Handle scroll events"""
@@ -233,15 +196,20 @@ class ActivityMonitor:
             )
             if text:
                 await self.store.store_keys(text)
-            self.buffer.clear()
+                self.buffer.clear()
+                self.last_activity = datetime.now()
 
-    async def _schedule_screenshot_cleanup(self, days: int):
-        """Schedule periodic cleanup of old screenshots"""
-        while self.running:
-            try:
-                await self.screen_capture.cleanup_old_captures(days)
-            except Exception as e:
-                logger.error("Screenshot cleanup error", error=str(e))
-            
-            # Run cleanup once per day
-            await asyncio.sleep(24 * 60 * 60)
+    async def _check_active_window(self):
+        """Check current active window"""
+        try:
+            window_info = await self.window_tracker.get_active_window()
+            if window_info != self.current_window:
+                self.current_window = window_info
+                self.stats['windows'] += 1
+                self.stats['last_window'] = window_info
+                await self.store.store_window(
+                    window_info['title'],
+                    window_info['process']
+                )
+        except Exception as e:
+            logger.error("Window check error", error=str(e))

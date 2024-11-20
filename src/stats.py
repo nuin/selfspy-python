@@ -9,7 +9,7 @@ from pathlib import Path
 import typer
 from rich.console import Console
 from rich.table import Table
-from sqlalchemy import select, func, distinct
+from sqlalchemy import select, func, distinct, and_
 
 from .models import Process, Window, Keys, Click
 from .config import Settings
@@ -54,34 +54,46 @@ async def _get_stats(store: ActivityStore, days: int):
     start_date = end_date - timedelta(days=days)
     
     async with store.async_session() as session:
-        # Get process stats with explicit joins
+        # Get process stats with NULL handling
         process_query = (
             select(
                 Process.name,
                 func.count(distinct(Window.id)).label('window_count'),
-                func.count(distinct(Keys.id)).label('keystroke_count'),
-                func.count(distinct(Click.id)).label('click_count')
+                func.coalesce(func.sum(Keys.count), 0).label('keystroke_count'),
+                func.coalesce(func.count(distinct(Click.id)), 0).label('click_count')
             )
             .select_from(Process)
             .join(Window, Process.id == Window.process_id)
-            .outerjoin(Keys, Window.id == Keys.window_id)
-            .outerjoin(Click, Window.id == Click.window_id)
+            .outerjoin(Keys, and_(
+                Keys.process_id == Process.id,
+                Keys.created_at >= start_date
+            ))
+            .outerjoin(Click, and_(
+                Click.process_id == Process.id,
+                Click.created_at >= start_date
+            ))
             .where(Window.created_at >= start_date)
             .group_by(Process.name)
         )
         
         process_stats = await session.execute(process_query)
         
-        # Get total counts with explicit joins
+        # Get total counts with NULL handling
         totals_query = (
             select(
-                func.count(distinct(Keys.id)).label('total_keystrokes'),
-                func.count(distinct(Click.id)).label('total_clicks'),
+                func.coalesce(func.sum(Keys.count), 0).label('total_keystrokes'),
+                func.coalesce(func.count(distinct(Click.id)), 0).label('total_clicks'),
                 func.count(distinct(Window.id)).label('total_windows')
             )
             .select_from(Window)
-            .outerjoin(Keys, Window.id == Keys.window_id)
-            .outerjoin(Click, Window.id == Click.window_id)
+            .outerjoin(Keys, and_(
+                Keys.window_id == Window.id,
+                Keys.created_at >= start_date
+            ))
+            .outerjoin(Click, and_(
+                Click.window_id == Window.id,
+                Click.created_at >= start_date
+            ))
             .where(Window.created_at >= start_date)
         )
         

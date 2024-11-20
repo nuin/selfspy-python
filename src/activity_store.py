@@ -116,6 +116,7 @@ class ActivityStore:
             async with session.begin():
                 keys = Keys(
                     text=encrypted_text,
+                    count=len(text),
                     process_id=self.current_process_id,
                     window_id=self.current_window_id
                 )

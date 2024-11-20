@@ -7,6 +7,46 @@ from typing import Dict, Optional, Tuple
 
 import Quartz
 import AppKit
+from pynput import keyboard, mouse
+
+from .input_tracker import InputTracker
+
+class MacOSInputTracker(InputTracker):
+    """MacOS input tracking implementation"""
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.keyboard_listener = None
+        self.mouse_listener = None
+        
+    def start(self):
+        """Start input tracking"""
+        super().start()
+        
+        # Initialize keyboard listener
+        self.keyboard_listener = keyboard.Listener(
+            on_press=self.on_key_press,
+            on_release=self.on_key_release
+        )
+        
+        # Initialize mouse listener
+        self.mouse_listener = mouse.Listener(
+            on_move=self.on_mouse_move,
+            on_click=self.on_mouse_click,
+            on_scroll=self.on_scroll
+        )
+        
+        # Start listeners
+        self.keyboard_listener.start()
+        self.mouse_listener.start()
+        
+    def stop(self):
+        """Stop input tracking"""
+        super().stop()
+        if self.keyboard_listener:
+            self.keyboard_listener.stop()
+        if self.mouse_listener:
+            self.mouse_listener.stop()
 
 class MacOSWindowTracker:
     """Track active window and process information on macOS"""
@@ -18,22 +58,20 @@ class MacOSWindowTracker:
         """Cleanup resources"""
         pass
         
-    async def get_active_window(self) -> Dict[str, str]:
-        """Get current active window information"""
-        active_app = self.workspace.activeApplication()
-        
-        if not active_app:
-            return {
-                'process': 'unknown',
-                'title': 'unknown',
-                'bundle': 'unknown'
-            }
+    async def get_active_window(self) -> Optional[Dict[str, str]]:
+        """Get active window information"""
+        try:
+            workspace = Quartz.NSWorkspace.sharedWorkspace()
+            active_app = workspace.activeApplication()
             
-        return {
-            'process': active_app['NSApplicationName'],
-            'title': self._get_window_title(active_app),
-            'bundle': active_app['NSApplicationBundleIdentifier']
-        }
+            if active_app:
+                return {
+                    'title': str(active_app['NSApplicationName']),
+                    'process': str(active_app['NSApplicationName'])
+                }
+        except Exception:
+            pass
+        return None
     
     def get_window_geometry(self) -> Tuple[int, int, int, int]:
         """Get current window geometry"""
