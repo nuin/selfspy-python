@@ -24,7 +24,6 @@ uvicorn = "^0.27.0"
 plotly = "^5.18.0"
 pandas = "^2.1.4"
 pydantic-settings = "^2.1.0"
-pyobjc-framework-Quartz = { version = "^9.2", platform = "darwin" }
 greenlet = "^3.0.1"
 
 [tool.poetry.group.dev.dependencies]
@@ -37,9 +36,13 @@ mypy = "^1.8.0"
 ruff = "^0.1.11"
 pre-commit = "^3.6.0"
 
+[tool.poetry.extras]
+macos = ["pyobjc-framework-Quartz", "pyobjc-framework-ApplicationServices"]
+
+
 [tool.poetry.scripts]
-selfspy = "src.cli:main"
-selfstats = "src.stats:main"
+selfspy = "src.cli:app"
+selfstats = "src.stats:app"
 
 [build-system]
 requires = ["poetry-core"]

@@ -15,6 +15,7 @@ from .activity_monitor import ActivityMonitor
 from .activity_store import ActivityStore
 from .config import Settings
 from .password_dialog import get_password
+from .stats import app as stats_app
 
 # Initialize Typer app and Rich console
 app = typer.Typer(help="Selfspy - Monitor and analyze your computer activity")
@@ -22,6 +23,8 @@ console = Console()
 
 # Install Rich traceback handler
 install(show_locals=True)
+
+app.add_typer(stats_app, name="stats", help="View activity statistics")
 
 @app.command()
 def start(

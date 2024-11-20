@@ -11,12 +11,15 @@ import structlog
 from pynput import mouse, keyboard
 
 from .config import Settings
-from .platform.darwin import MacOSWindowTracker
+from .platform import MacOSWindowTracker, MacScreenCapture  # Updated import
 
 import sys
 from pathlib import Path
 
+from .platform.input_tracker import InputTracker
+
 logger = structlog.get_logger()
+
 
 class ActivityMonitor:
     """Activity monitor implementation"""
@@ -41,26 +44,25 @@ class ActivityMonitor:
         )
         
         # Initialize platform-specific window tracker
-        if platform.system() == 'Darwin':
-            try:
-                import Quartz
-                import AppKit
+        try:
+            if platform.system() == 'Darwin':
+                from .platform.darwin import MacOSWindowTracker
                 self.window_tracker = MacOSWindowTracker()
-            except ImportError:
-                logger.error("MacOS libraries not found. Please run: poetry install")
-                raise ImportError("Required macOS libraries not found. Run: poetry install")
-        else:
-            raise NotImplementedError(f"Platform {platform.system()} not supported.")
+            else:
+                from .platform.fallback import FallbackWindowTracker
+                self.window_tracker = FallbackWindowTracker()
+                logger.warning(f"Platform {platform.system()} has limited window tracking support")
+        except Exception as e:
+            logger.warning(f"Using fallback window tracker: {str(e)}")
+            from .platform.fallback import FallbackWindowTracker
+            self.window_tracker = FallbackWindowTracker()
         
-        # Initialize input listeners with all required callbacks
-        self.keyboard_listener = keyboard.Listener(
-            on_press=self._on_key_press,
-            on_release=self._on_key_release
-        )
-        
-        self.mouse_listener = mouse.Listener(
-            on_move=self._on_mouse_move,
-            on_click=self._on_mouse_click,
+        # Initialize input tracker
+        self.input_tracker = InputTracker(
+            on_key_press=self._on_key_press,
+            on_key_release=self._on_key_release,
+            on_mouse_move=self._on_mouse_move,
+            on_mouse_click=self._on_mouse_click,
             on_scroll=self._on_scroll
         )
 
@@ -70,12 +72,23 @@ class ActivityMonitor:
         
         if not self._check_permissions():
             raise PermissionError(
-                "Accessibility permissions required. Please enable in System Preferences."
+                "Accessibility permissions required. Please enable in System Settings."
             )
         
         self.running = True
-        self.keyboard_listener.start()
-        self.mouse_listener.start()
+        self.input_tracker.start()
+        
+        # Start screen capture if enabled
+        if hasattr(self, 'screen_capture') and self.settings.enable_screenshots:
+            await self.screen_capture.start_periodic_capture()
+            
+            # Schedule cleanup of old screenshots
+            if self.settings.screenshot_cleanup_days > 0:
+                asyncio.create_task(
+                    self._schedule_screenshot_cleanup(
+                        self.settings.screenshot_cleanup_days
+                    )
+                )
         
         while self.running:
             try:
@@ -92,10 +105,12 @@ class ActivityMonitor:
         logger.info("Stopping activity monitor...")
         self.running = False
         
-        if self.keyboard_listener.running:
-            self.keyboard_listener.stop()
-        if self.mouse_listener.running:
-            self.mouse_listener.stop()
+        if self.input_tracker.running:
+            self.input_tracker.stop()
+        
+        # Stop screen capture
+        if hasattr(self, 'screen_capture'):
+            await self.screen_capture.stop_periodic_capture()
             
         self.window_tracker.cleanup()
         await self._flush_buffer()
@@ -120,6 +135,10 @@ class ActivityMonitor:
                     bundle=window_info['bundle'],
                     geometry=geometry
                 )
+                
+                # Update screen capture if enabled
+                if hasattr(self, 'screen_capture') and self.settings.enable_screenshots:
+                    await self.screen_capture.update_window_info(window_info)
                 
         except Exception as e:
             if not self.settings.monitor_suppress_errors:
@@ -157,12 +176,11 @@ class ActivityMonitor:
                     
         except ImportError:
             logger.error("MacOS libraries not found. Please run: poetry install")
-            raise ImportError("Required macOS libraries not found. Run: poetry install")
+            raise ImportError("Required macOS libraries not found")
         except Exception as e:
             if not self.settings.monitor_suppress_errors:
                 logger.error("Permission check error", error=str(e))
             return False
-
 
     def _on_key_press(self, key):
         """Handle key press events"""
@@ -216,3 +234,14 @@ class ActivityMonitor:
             if text:
                 await self.store.store_keys(text)
             self.buffer.clear()
+
+    async def _schedule_screenshot_cleanup(self, days: int):
+        """Schedule periodic cleanup of old screenshots"""
+        while self.running:
+            try:
+                await self.screen_capture.cleanup_old_captures(days)
+            except Exception as e:
+                logger.error("Screenshot cleanup error", error=str(e))
+            
+            # Run cleanup once per day
+            await asyncio.sleep(24 * 60 * 60)
