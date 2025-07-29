@@ -17,6 +17,7 @@ from .config import Settings
 from .password_dialog import get_password
 from .permissions import check_and_request_permissions
 from .stats import app as stats_app
+from .enhanced_stats import app as enhanced_stats_app
 
 # Initialize Typer app and Rich console
 app = typer.Typer(help="Selfspy - Monitor and analyze your computer activity")
@@ -26,6 +27,7 @@ console = Console()
 install(show_locals=True)
 
 app.add_typer(stats_app, name="stats", help="View activity statistics")
+app.add_typer(enhanced_stats_app, name="viz", help="Enhanced visualizations and analytics")
 
 
 @app.command()

@@ -48,6 +48,7 @@ dev = [
 [project.scripts]
 selfspy = "src.cli:app"
 selfstats = "src.stats:app"
+selfviz = "src.enhanced_stats:app"
 
 [build-system]
 requires = ["hatchling"]
