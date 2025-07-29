@@ -1,52 +1,46 @@
 """
 Activity data storage implementation
 """
+
 import asyncio
-from datetime import datetime
 from typing import Optional, Tuple
 
 import structlog
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.future import select
+from sqlalchemy.orm import sessionmaker
 
-from .models import Base, Process, Window, Keys, Click
 from .config import Settings
-from .encryption import create_cipher, check_password
+from .encryption import check_password, create_cipher
+from .models import Base, Click, Keys, Process, Window
 
 logger = structlog.get_logger()
 
+
 class ActivityStore:
     """Asynchronous activity data store"""
-    
-    def __init__(
-        self,
-        settings: Settings,
-        password: Optional[str] = None
-    ):
+
+    def __init__(self, settings: Settings, password: Optional[str] = None):
         """Initialize activity store"""
         self.settings = settings
         self.password = password
-        
+
         # Initialize SQLAlchemy engine
         self.engine = create_async_engine(
-            f"sqlite+aiosqlite:///{settings.database_path}",
-            echo=settings.debug
+            f"sqlite+aiosqlite:///{settings.database_path}", echo=settings.debug
         )
-        
+
         # Create tables on startup
         async def init_db():
             async with self.engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
-                
+
         asyncio.run(init_db())
-        
+
         self.async_session = sessionmaker(
-            self.engine, 
-            class_=AsyncSession,
-            expire_on_commit=False
+            self.engine, class_=AsyncSession, expire_on_commit=False
         )
-        
+
         self.cipher = create_cipher(password) if password else None
         self.current_window_id: Optional[int] = None
         self.current_process_id: Optional[int] = None
@@ -58,9 +52,7 @@ class ActivityStore:
 
         if self.settings.encryption_enabled:
             await check_password(
-                self.settings.data_dir,
-                self.cipher,
-                self.settings.read_only
+                self.settings.data_dir, self.cipher, self.settings.read_only
             )
 
     async def update_window_info(
@@ -68,7 +60,7 @@ class ActivityStore:
         process_name: str,
         window_title: str,
         bundle: str,
-        geometry: Optional[Tuple[int, int, int, int]] = None
+        geometry: Optional[Tuple[int, int, int, int]] = None,
     ):
         """Update current window information"""
         async with self.async_session() as session:
@@ -81,16 +73,13 @@ class ActivityStore:
                     process = Process(name=process_name, bundle_id=bundle)
                     session.add(process)
                     await session.flush()
-                
+
                 # Update current process ID
                 self.current_process_id = process.id
-                
+
                 # Create window record
-                window = Window(
-                    title=window_title,
-                    process_id=process.id
-                )
-                
+                window = Window(title=window_title, process_id=process.id)
+
                 # Add geometry if provided
                 if geometry:
                     x, y, width, height = geometry
@@ -98,10 +87,10 @@ class ActivityStore:
                     window.y = y
                     window.width = width
                     window.height = height
-                    
+
                 session.add(window)
                 await session.flush()
-                
+
                 # Update current window ID
                 self.current_window_id = window.id
 
@@ -109,16 +98,16 @@ class ActivityStore:
         """Store keystroke data"""
         if not self.current_process_id or not self.current_window_id:
             return
-            
+
         encrypted_text = self._encrypt_text(text)
-        
+
         async with self.async_session() as session:
             async with session.begin():
                 keys = Keys(
                     text=encrypted_text,
                     count=len(text),
                     process_id=self.current_process_id,
-                    window_id=self.current_window_id
+                    window_id=self.current_window_id,
                 )
                 session.add(keys)
 
@@ -126,7 +115,7 @@ class ActivityStore:
         """Store mouse click data"""
         if not self.current_process_id or not self.current_window_id:
             return
-            
+
         async with self.async_session() as session:
             async with session.begin():
                 click = Click(
@@ -134,7 +123,7 @@ class ActivityStore:
                     x=x,
                     y=y,
                     process_id=self.current_process_id,
-                    window_id=self.current_window_id
+                    window_id=self.current_window_id,
                 )
                 session.add(click)
 
@@ -142,9 +131,9 @@ class ActivityStore:
         """Encrypt text data"""
         if not self.cipher:
             return text.encode()
-            
+
         padding = 8 - (len(text) % 8)
-        padded_text = text + '\0' * padding
+        padded_text = text + "\0" * padding
         return self.cipher.encrypt(padded_text.encode())
 
     async def close(self):

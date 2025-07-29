@@ -1,6 +1,8 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List
+
 from pydantic import BaseModel
+
 
 class ActivityStats(BaseModel):
     hour: int
@@ -8,12 +10,14 @@ class ActivityStats(BaseModel):
     keystroke_count: int
     click_count: int
 
+
 class ProcessStats(BaseModel):
     name: str
     window_count: int
     active_time: int
     keystroke_count: int
     click_count: int
+
 
 class StatsResponse(BaseModel):
     start_date: datetime
