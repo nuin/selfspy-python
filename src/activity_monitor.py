@@ -187,7 +187,14 @@ class ActivityMonitor:
             if pressed:
                 button_num = 1 if button == mouse.Button.left else 3
                 self.stats["clicks"] += 1
-                asyncio.create_task(self.store.store_click(button_num, x, y))
+                # Buffer click for async storage
+                self.buffer.append({
+                    "type": "click", 
+                    "button": button_num, 
+                    "x": x, 
+                    "y": y, 
+                    "time": datetime.now()
+                })
                 self.last_activity = datetime.now()
         except Exception as e:
             logger.error("Mouse click error", error=str(e))
@@ -196,25 +203,49 @@ class ActivityMonitor:
         """Handle scroll events"""
         try:
             button_num = 4 if dy > 0 else 5
-            asyncio.create_task(self.store.store_click(button_num, x, y))
+            # Buffer scroll event for async storage
+            self.buffer.append({
+                "type": "click", 
+                "button": button_num, 
+                "x": x, 
+                "y": y, 
+                "time": datetime.now()
+            })
             self.last_activity = datetime.now()
         except Exception as e:
             logger.error("Scroll error", error=str(e))
 
     async def _flush_buffer(self):
-        """Flush keystroke buffer to storage"""
-        if (
-            self.buffer
-            and (datetime.now() - self.last_activity).seconds
-            > self.settings.keystroke_buffer_timeout
-        ):
+        """Flush keystroke and click buffer to storage"""
+        if not self.buffer:
+            return
+            
+        current_time = datetime.now()
+        time_since_activity = (current_time - self.last_activity).seconds
+        
+        # Check if we should flush
+        should_flush = (
+            time_since_activity > self.settings.keystroke_buffer_timeout or
+            len(self.buffer) > 50  # Force flush if buffer gets too large
+        )
+        
+        if should_flush:
+            # Process keystrokes
             text = "".join(
-                item["key"] for item in self.buffer if isinstance(item.get("key"), str)
+                item["key"] for item in self.buffer if item.get("type") == "key" and isinstance(item.get("key"), str)
             )
             if text:
                 await self.store.store_keys(text)
-                self.buffer.clear()
-                self.last_activity = datetime.now()
+            
+            # Process clicks
+            clicks = [item for item in self.buffer if item.get("type") == "click"]
+            if clicks:
+                logger.debug(f"Flushing {len(clicks)} clicks to database")
+            for click in clicks:
+                await self.store.store_click(click["button"], click["x"], click["y"])
+            
+            self.buffer.clear()
+            self.last_activity = current_time
 
     async def _check_active_window(self):
         """Check current active window"""

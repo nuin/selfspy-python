@@ -6,6 +6,7 @@ import AppKit
 import Quartz
 import structlog
 from pynput.keyboard import Key
+from pynput.mouse import Button
 
 from .input_tracker import InputTracker
 
@@ -75,11 +76,11 @@ class MacOSInputTracker(InputTracker):
             elif event_type == Quartz.kCGEventLeftMouseDown and self.on_mouse_click:
                 # Get mouse coordinates
                 point = Quartz.CGEventGetLocation(event)
-                self.on_mouse_click(int(point.x), int(point.y), "left", True)
+                self.on_mouse_click(int(point.x), int(point.y), Button.left, True)
 
             elif event_type == Quartz.kCGEventRightMouseDown and self.on_mouse_click:
                 point = Quartz.CGEventGetLocation(event)
-                self.on_mouse_click(int(point.x), int(point.y), "right", True)
+                self.on_mouse_click(int(point.x), int(point.y), Button.right, True)
 
             elif event_type == Quartz.kCGEventScrollWheel and self.on_scroll:
                 # Get scroll deltas

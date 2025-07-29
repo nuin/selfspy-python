@@ -216,7 +216,7 @@ async def _get_enhanced_stats(store: ActivityStore, days: int):
             .outerjoin(Click, and_(Click.process_id == Process.id, Click.created_at >= start_date))
             .where(Window.created_at >= start_date)
             .group_by(Process.name)
-            .order_by(func.coalesce(func.sum(Keys.count), 0).desc())
+            .order_by((func.coalesce(func.sum(Keys.count), 0) + func.coalesce(func.count(distinct(Click.id)), 0)).desc())
         )
 
         process_stats = await session.execute(process_query)
