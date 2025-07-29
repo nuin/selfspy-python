@@ -1413,6 +1413,16 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+dev = [
+    { name = "black" },
+    { name = "isort" },
+    { name = "mypy" },
+    { name = "pre-commit" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
+    { name = "ruff" },
+]
 macos = [
     { name = "pyobjc-framework-applicationservices" },
     { name = "pyobjc-framework-quartz" },
@@ -1435,25 +1445,33 @@ requires-dist = [
     { name = "aiofiles", specifier = ">=23.2.0" },
     { name = "aiosqlite", specifier = ">=0.19.0" },
     { name = "appdirs", specifier = ">=1.4.4" },
+    { name = "black", marker = "extra == 'dev'", specifier = ">=23.12.1" },
     { name = "cryptography", specifier = ">=41.0.7" },
     { name = "fastapi", specifier = ">=0.109.0" },
     { name = "greenlet", specifier = ">=3.0.1" },
+    { name = "isort", marker = "extra == 'dev'", specifier = ">=5.13.2" },
     { name = "keyring", specifier = ">=24.3.0" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.8.0" },
     { name = "pandas", specifier = ">=2.1.4" },
     { name = "plotly", specifier = ">=5.18.0" },
+    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.6.0" },
     { name = "pycryptodome", specifier = ">=3.19.0" },
     { name = "pydantic-settings", specifier = ">=2.1.0" },
     { name = "pynput", specifier = ">=1.7.6" },
     { name = "pyobjc-framework-applicationservices", marker = "extra == 'macos'" },
     { name = "pyobjc-framework-quartz", marker = "extra == 'macos'" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4.4" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23.3" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
     { name = "python-dateutil", specifier = ">=2.8.2" },
     { name = "rich", specifier = ">=13.7.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.11" },
     { name = "sqlalchemy", specifier = ">=2.0.25" },
     { name = "structlog", specifier = ">=24.1.0" },
     { name = "typer", specifier = ">=0.9.0" },
     { name = "uvicorn", specifier = ">=0.27.0" },
 ]
-provides-extras = ["macos"]
+provides-extras = ["macos", "dev"]
 
 [package.metadata.requires-dev]
 dev = [

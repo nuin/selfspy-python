@@ -18,6 +18,7 @@ from rich.table import Table
 from .activity_store import ActivityStore
 from .config import Settings
 from .platform.input_tracker import InputTracker
+from .terminal_tracker import TerminalTracker
 
 logger = structlog.get_logger()
 
@@ -48,6 +49,9 @@ class ActivityMonitor:
         structlog.configure(
             wrapper_class=structlog.make_filtering_bound_logger(log_level)
         )
+
+        # Initialize terminal tracker
+        self.terminal_tracker = TerminalTracker(store)
 
         # Initialize platform-specific trackers
         try:
@@ -136,6 +140,9 @@ class ActivityMonitor:
         # Start input tracking
         if not self.input_tracker.start():
             raise RuntimeError("Failed to start input tracking")
+
+        # Start terminal tracking in background
+        asyncio.create_task(self.terminal_tracker.start_tracking())
 
         with Live(self._generate_display(), refresh_per_second=1) as live:
             self.live_display = live

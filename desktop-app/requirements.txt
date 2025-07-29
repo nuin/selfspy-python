@@ -1,0 +1,11 @@
+# Desktop app specific requirements
+pyobjc-framework-Cocoa
+pyobjc-framework-Quartz
+pyobjc-framework-WebKit
+
+# Data visualization (optional)
+matplotlib>=3.7.0
+Pillow>=10.0.0
+
+# Optional: Web-based visualizations
+jinja2>=3.1.0
