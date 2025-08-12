@@ -6,17 +6,13 @@ import asyncio
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, Dict, List, Tuple
-import math
 
 import typer
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from rich.columns import Columns
-from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn
-from rich.text import Text
 from rich.align import Align
-from rich.layout import Layout
 from rich.tree import Tree
 from sqlalchemy import and_, distinct, func, select, extract
 

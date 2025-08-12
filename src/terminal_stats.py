@@ -9,12 +9,9 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import typer
-from rich.columns import Columns
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich.text import Text
-from rich.tree import Tree
 from sqlalchemy import and_, desc, func, select
 
 from .activity_store import ActivityStore
@@ -435,7 +432,7 @@ async def _get_workflow_stats(
         dangerous_query = select(TerminalCommand).where(
             and_(
                 TerminalCommand.created_at >= start_date,
-                TerminalCommand.is_dangerous == True,
+                TerminalCommand.is_dangerous,
             )
         )
 

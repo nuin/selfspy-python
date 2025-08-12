@@ -8,7 +8,6 @@ import platform
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-import Quartz
 import structlog
 from pynput import mouse
 from rich.layout import Layout
