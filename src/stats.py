@@ -60,50 +60,72 @@ async def _get_stats(store: ActivityStore, days: int):
     start_date = end_date - timedelta(days=days)
 
     async with store.async_session() as session:
-        # Get process stats with NULL handling
+        # Get process stats using subqueries to avoid cartesian product
+        # Subquery for keystrokes
+        keystroke_subq = (
+            select(
+                Keys.process_id,
+                func.sum(Keys.count).label("keystroke_count")
+            )
+            .where(Keys.created_at >= start_date)
+            .group_by(Keys.process_id)
+            .subquery()
+        )
+        
+        # Subquery for clicks
+        click_subq = (
+            select(
+                Click.process_id,
+                func.count(Click.id).label("click_count")
+            )
+            .where(Click.created_at >= start_date)
+            .group_by(Click.process_id)
+            .subquery()
+        )
+        
+        # Main query with proper joins
         process_query = (
             select(
                 Process.name,
                 func.count(distinct(Window.id)).label("window_count"),
-                func.coalesce(func.sum(Keys.count), 0).label("keystroke_count"),
-                func.coalesce(func.count(distinct(Click.id)), 0).label("click_count"),
+                func.coalesce(keystroke_subq.c.keystroke_count, 0).label("keystroke_count"),
+                func.coalesce(click_subq.c.click_count, 0).label("click_count"),
             )
             .select_from(Process)
             .join(Window, Process.id == Window.process_id)
-            .outerjoin(
-                Keys, and_(Keys.process_id == Process.id, Keys.created_at >= start_date)
-            )
-            .outerjoin(
-                Click,
-                and_(Click.process_id == Process.id, Click.created_at >= start_date),
-            )
+            .outerjoin(keystroke_subq, Process.id == keystroke_subq.c.process_id)
+            .outerjoin(click_subq, Process.id == click_subq.c.process_id)
             .where(Window.created_at >= start_date)
-            .group_by(Process.name)
+            .group_by(Process.name, keystroke_subq.c.keystroke_count, click_subq.c.click_count)
         )
 
         process_stats = await session.execute(process_query)
 
-        # Get total counts with NULL handling
-        totals_query = (
-            select(
-                func.coalesce(func.sum(Keys.count), 0).label("total_keystrokes"),
-                func.coalesce(func.count(distinct(Click.id)), 0).label("total_clicks"),
-                func.count(distinct(Window.id)).label("total_windows"),
-            )
-            .select_from(Window)
-            .outerjoin(
-                Keys, and_(Keys.window_id == Window.id, Keys.created_at >= start_date)
-            )
-            .outerjoin(
-                Click,
-                and_(Click.window_id == Window.id, Click.created_at >= start_date),
-            )
+        # Get total counts using separate queries to avoid cartesian product
+        keystroke_total = await session.execute(
+            select(func.coalesce(func.sum(Keys.count), 0))
+            .where(Keys.created_at >= start_date)
+        )
+        total_keystrokes = keystroke_total.scalar()
+        
+        click_total = await session.execute(
+            select(func.count(Click.id))
+            .where(Click.created_at >= start_date)
+        )
+        total_clicks = click_total.scalar()
+        
+        window_total = await session.execute(
+            select(func.count(distinct(Window.id)))
             .where(Window.created_at >= start_date)
         )
+        total_windows = window_total.scalar()
+        
+        # Create a named tuple for consistency with the rest of the code
+        from collections import namedtuple
+        Totals = namedtuple('Totals', ['total_keystrokes', 'total_clicks', 'total_windows'])
+        totals = Totals(total_keystrokes, total_clicks, total_windows)
 
-        totals = await session.execute(totals_query)
-
-        return {"processes": process_stats.all(), "totals": totals.first()}
+        return {"processes": process_stats.all(), "totals": totals}
 
 
 def _display_stats(stats, days):

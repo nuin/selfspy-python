@@ -5,11 +5,9 @@ Tracks commands executed in terminal sessions with folder context
 
 import asyncio
 import hashlib
-import json
 import os
 import re
 import subprocess
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -17,7 +15,6 @@ import structlog
 from sqlalchemy import (
     Boolean,
     Column,
-    DateTime,
     ForeignKey,
     Integer,
     String,
