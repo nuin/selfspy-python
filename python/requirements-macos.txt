@@ -1,0 +1,6 @@
+# macOS-specific dependencies
+-r requirements.txt
+
+# PyObjC frameworks for macOS integration
+pyobjc-framework-Quartz
+pyobjc-framework-ApplicationServices
