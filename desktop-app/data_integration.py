@@ -11,14 +11,16 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 
-# Add parent directory to path to import selfspy modules
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+# Add parent directory to path to import selfspy package
+parent_dir = str(Path(__file__).parent.parent)
+if parent_dir not in sys.path:
+    sys.path.append(parent_dir)
 
 try:
-    from config import Settings
-    from activity_store import ActivityStore
-    from models import Process, Window, Keys, Click
-    from terminal_tracker import TerminalSession, TerminalCommand
+    from src.config import Settings
+    from src.activity_store import ActivityStore
+    from src.models import Process, Window, Keys, Click
+    from src.terminal_tracker import TerminalSession, TerminalCommand
     from sqlalchemy import select, func, desc, and_
 except ImportError as e:
     print(f"Warning: Could not import selfspy modules: {e}")

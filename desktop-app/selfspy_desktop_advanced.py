@@ -14,8 +14,10 @@ import threading
 from datetime import datetime, timedelta
 from pathlib import Path
 
-# Add parent directory to path to import selfspy modules
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+# Add parent directory to path to import selfspy package
+parent_dir = str(Path(__file__).parent.parent)
+if parent_dir not in sys.path:
+    sys.path.append(parent_dir)
 
 import objc
 from Foundation import *
@@ -27,8 +29,8 @@ from widget_types import WIDGET_TYPES, BaseWidget
 
 # Import selfspy modules
 try:
-    from config import Settings
-    from activity_store import ActivityStore
+    from src.config import Settings
+    from src.activity_store import ActivityStore
 except ImportError as e:
     print(f"⚠️  Warning: Could not import selfspy modules: {e}")
     print("Some features may not work correctly")

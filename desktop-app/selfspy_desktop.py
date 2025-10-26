@@ -13,8 +13,11 @@ import threading
 from datetime import datetime, timedelta
 from pathlib import Path
 
-# Add parent directory to path to import selfspy modules
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+# Add parent directory to path to import selfspy package
+# Insert at the end to avoid shadowing standard library modules
+parent_dir = str(Path(__file__).parent.parent)
+if parent_dir not in sys.path:
+    sys.path.append(parent_dir)
 
 import objc
 from Foundation import *
@@ -23,12 +26,12 @@ from Quartz import *
 
 # Import selfspy modules
 try:
-    from config import Settings
-    from activity_store import ActivityStore
-    from enhanced_stats import get_enhanced_statistics
+    from src.config import Settings
+    from src.activity_store import ActivityStore
+    # enhanced_stats is a Typer app, not a function - we'll query directly
 except ImportError as e:
     print(f"Error importing selfspy modules: {e}")
-    print("Make sure you're running from the selfspy3 directory")
+    print(f"Make sure you run from the project root or use: uv run python desktop-app/selfspy_desktop.py")
     sys.exit(1)
 
 

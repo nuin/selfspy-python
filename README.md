@@ -23,4 +23,24 @@ uv run selfviz enhanced
 - **Terminal Analytics**: Development workflow analysis with git integration
 - **Privacy-First**: Local encryption, configurable exclusions
 
-See [main documentation](../docs/) for detailed guides.
+## Documentation
+
+Comprehensive documentation is available in the [`docs/`](docs/) directory:
+
+- **[Installation Guide](docs/installation.md)** - Setup and dependencies
+- **[Usage Guide](docs/usage.md)** - Commands and workflows
+- **[Configuration](docs/configuration.md)** - Settings and customization
+- **[Architecture](docs/architecture.md)** - System design and internals
+- **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
+
+## Requirements
+
+- Python 3.10+
+- macOS 10.12+ (for full features)
+- Accessibility permissions (macOS)
+
+For detailed installation instructions, see the [Installation Guide](docs/installation.md).
+
+## License
+
+GPL-3.0-or-later

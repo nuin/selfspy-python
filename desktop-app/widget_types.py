@@ -6,8 +6,10 @@ import sys
 from pathlib import Path
 from datetime import datetime, timedelta
 
-# Add parent directory to path to import selfspy modules
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+# Add parent directory to path to import selfspy package
+parent_dir = str(Path(__file__).parent.parent)
+if parent_dir not in sys.path:
+    sys.path.append(parent_dir)
 
 from Foundation import *
 from AppKit import *
