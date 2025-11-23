@@ -6,14 +6,20 @@ import asyncio
 import logging
 import platform
 from asyncio import Queue
-from datetime import datetime
+from collections import defaultdict, deque
+from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
 import structlog
 from pynput import mouse
+from rich.align import Align
+from rich.console import Group
 from rich.layout import Layout
 from rich.live import Live
+from rich.panel import Panel
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 from rich.table import Table
+from rich.text import Text
 
 from .activity_store import ActivityStore
 from .config import Settings
@@ -45,6 +51,14 @@ class ActivityMonitor:
             "start_time": datetime.now(),
         }
         self.live_display = None
+
+        # Rich metrics tracking
+        self.keystroke_history = deque(maxlen=60)  # Last 60 seconds
+        self.click_history = deque(maxlen=60)
+        self.app_usage = defaultdict(lambda: {"time": 0, "keys": 0, "clicks": 0, "windows": 0})
+        self.last_metric_time = datetime.now()
+        self.current_second_keys = 0
+        self.current_second_clicks = 0
 
         # Configure logging
         log_level = logging.DEBUG if debug else logging.INFO
@@ -95,31 +109,257 @@ class ActivityMonitor:
                 on_scroll=self._on_scroll,
             )
 
-    def _generate_display(self) -> Layout:
-        """Generate live display layout"""
-        layout = Layout()
+    def _update_metrics(self):
+        """Update per-second metrics for charts"""
+        now = datetime.now()
+        if (now - self.last_metric_time).total_seconds() >= 1.0:
+            self.keystroke_history.append(self.current_second_keys)
+            self.click_history.append(self.current_second_clicks)
+            self.current_second_keys = 0
+            self.current_second_clicks = 0
+            self.last_metric_time = now
 
-        # Activity summary table
-        summary = Table(title="Activity Summary")
-        summary.add_column("Metric", style="cyan")
-        summary.add_column("Value", style="green")
+    def _create_sparkline(self, data: deque, max_val: int = None) -> str:
+        """Create a sparkline chart from data"""
+        if not data:
+            return "▁" * 20
 
+        bars = "▁▂▃▄▅▆▇█"
+        max_value = max_val or max(data) if max(data) > 0 else 1
+
+        # Take last 40 data points for display
+        display_data = list(data)[-40:]
+        sparkline = ""
+        for value in display_data:
+            index = min(int((value / max_value) * (len(bars) - 1)), len(bars) - 1)
+            sparkline += bars[index]
+
+        return sparkline
+
+    def _generate_header(self) -> Panel:
+        """Generate header panel with session info"""
         duration = datetime.now() - self.stats["start_time"]
+        hours = duration.seconds // 3600
+        minutes = (duration.seconds % 3600) // 60
+        seconds = duration.seconds % 60
 
-        summary.add_row(
-            "Session Duration",
-            f"{duration.seconds // 3600}h {(duration.seconds % 3600) // 60}m",
+        grid = Table.grid(padding=1)
+        grid.add_column(justify="left", style="cyan bold")
+        grid.add_column(justify="center")
+        grid.add_column(justify="right", style="magenta bold")
+
+        grid.add_row(
+            f"⏱  Session: {hours:02d}h {minutes:02d}m {seconds:02d}s",
+            Text("SELFSPY ACTIVITY MONITOR", style="bold white"),
+            f"Buffer: {self.buffer.qsize()}/1000"
         )
-        summary.add_row("Keystrokes", str(self.stats["keystrokes"]))
-        summary.add_row("Clicks", str(self.stats["clicks"]))
-        summary.add_row("Windows", str(self.stats["windows"]))
-        if self.stats["last_window"]:
-            summary.add_row(
-                "Current Window",
-                f"{self.stats['last_window']['process']} - {self.stats['last_window']['title']}",
+
+        return Panel(grid, style="bold blue")
+
+    def _generate_metrics_panel(self) -> Panel:
+        """Generate real-time metrics with sparklines"""
+        # Update metrics
+        self._update_metrics()
+
+        table = Table.grid(padding=(0, 2))
+        table.add_column("Label", style="cyan")
+        table.add_column("Value", style="green bold", justify="right")
+        table.add_column("Chart", style="yellow")
+        table.add_column("Rate", style="dim")
+
+        # Calculate rates
+        duration = (datetime.now() - self.stats["start_time"]).total_seconds()
+        keys_per_min = int((self.stats["keystrokes"] / duration) * 60) if duration > 0 else 0
+        clicks_per_min = int((self.stats["clicks"] / duration) * 60) if duration > 0 else 0
+
+        # Recent activity (last 60 seconds)
+        recent_keys = sum(self.keystroke_history) if self.keystroke_history else 0
+        recent_clicks = sum(self.click_history) if self.click_history else 0
+
+        table.add_row(
+            "⌨  Keystrokes",
+            f"{self.stats['keystrokes']:,}",
+            self._create_sparkline(self.keystroke_history, max_val=100),
+            f"{keys_per_min}/min"
+        )
+        table.add_row(
+            "🖱  Clicks",
+            f"{self.stats['clicks']:,}",
+            self._create_sparkline(self.click_history, max_val=50),
+            f"{clicks_per_min}/min"
+        )
+        table.add_row(
+            "🪟  Windows",
+            f"{self.stats['windows']:,}",
+            "",
+            f"{len(self.app_usage)} apps"
+        )
+        table.add_row(
+            "🔄  Recent Activity",
+            f"{recent_keys + recent_clicks:,}",
+            "",
+            "last 60s"
+        )
+
+        return Panel(table, title="[bold]📊 Real-time Metrics[/bold]", border_style="green")
+
+    def _generate_top_apps_panel(self) -> Panel:
+        """Generate top applications panel"""
+        # Sort apps by keystroke activity
+        sorted_apps = sorted(
+            self.app_usage.items(),
+            key=lambda x: x[1]["keys"] + x[1]["clicks"],
+            reverse=True
+        )[:10]
+
+        if not sorted_apps:
+            return Panel(
+                Align.center("[dim]No application data yet...[/dim]"),
+                title="[bold]🏆 Top Applications[/bold]",
+                border_style="blue"
             )
 
-        layout.update(summary)
+        table = Table(show_header=True, header_style="bold cyan", box=None)
+        table.add_column("App", style="white")
+        table.add_column("Keys", justify="right", style="green")
+        table.add_column("Clicks", justify="right", style="yellow")
+        table.add_column("Windows", justify="right", style="magenta")
+        table.add_column("Activity", justify="right")
+
+        # Calculate total for percentages
+        total_activity = sum(app["keys"] + app["clicks"] for _, app in sorted_apps)
+
+        for app_name, metrics in sorted_apps[:8]:
+            activity = metrics["keys"] + metrics["clicks"]
+            percentage = (activity / total_activity * 100) if total_activity > 0 else 0
+
+            # Create mini progress bar
+            bar_length = int(percentage / 5)  # Scale to 20 chars max
+            bar = "█" * bar_length + "░" * (20 - bar_length)
+
+            table.add_row(
+                app_name[:20],
+                f"{metrics['keys']:,}",
+                f"{metrics['clicks']:,}",
+                str(metrics['windows']),
+                f"{bar} {percentage:.1f}%"
+            )
+
+        return Panel(table, title="[bold]🏆 Top Applications[/bold]", border_style="blue")
+
+    def _generate_current_window_panel(self) -> Panel:
+        """Generate current window/activity panel"""
+        if not self.stats.get("last_window"):
+            content = Align.center("[dim]Waiting for activity...[/dim]")
+        else:
+            window = self.stats["last_window"]
+            app_name = window.get("process", "Unknown")
+            window_title = window.get("title", "Unknown")
+
+            # Get current app stats
+            app_stats = self.app_usage.get(app_name, {"keys": 0, "clicks": 0, "windows": 0})
+
+            grid = Table.grid(padding=(0, 2))
+            grid.add_column(style="cyan")
+            grid.add_column(style="white")
+
+            grid.add_row("Application:", f"[bold green]{app_name}[/bold green]")
+            grid.add_row("Window:", f"[dim]{window_title[:50]}[/dim]")
+            grid.add_row("", "")
+            grid.add_row("Session Stats:", "")
+            grid.add_row("  └ Keystrokes:", f"[green]{app_stats['keys']:,}[/green]")
+            grid.add_row("  └ Clicks:", f"[yellow]{app_stats['clicks']:,}[/yellow]")
+            grid.add_row("  └ Windows:", f"[magenta]{app_stats['windows']}[/magenta]")
+
+            content = grid
+
+        return Panel(content, title="[bold]🎯 Current Focus[/bold]", border_style="magenta")
+
+    def _generate_productivity_panel(self) -> Panel:
+        """Generate productivity insights panel"""
+        duration = (datetime.now() - self.stats["start_time"]).total_seconds()
+
+        # Calculate productivity metrics
+        if duration > 0:
+            avg_keys_per_min = (self.stats["keystrokes"] / duration) * 60
+            avg_clicks_per_min = (self.stats["clicks"] / duration) * 60
+
+            # Activity score (simple heuristic)
+            activity_score = min(100, int((avg_keys_per_min + avg_clicks_per_min) / 2))
+
+            # Determine activity level
+            if activity_score > 80:
+                activity_level = "[bold green]Very High ⚡[/bold green]"
+            elif activity_score > 60:
+                activity_level = "[green]High 📈[/green]"
+            elif activity_score > 40:
+                activity_level = "[yellow]Moderate 📊[/yellow]"
+            elif activity_score > 20:
+                activity_level = "[yellow]Low 📉[/yellow]"
+            else:
+                activity_level = "[dim]Very Low 💤[/dim]"
+        else:
+            activity_score = 0
+            activity_level = "[dim]Starting...[/dim]"
+
+        grid = Table.grid(padding=(0, 2))
+        grid.add_column(style="cyan")
+        grid.add_column(style="white")
+
+        grid.add_row("Activity Level:", activity_level)
+        grid.add_row("Activity Score:", f"[bold]{activity_score}/100[/bold]")
+        grid.add_row("", "")
+        grid.add_row("Averages:", "")
+        if duration > 0:
+            grid.add_row("  └ Keys/min:", f"[green]{avg_keys_per_min:.1f}[/green]")
+            grid.add_row("  └ Clicks/min:", f"[yellow]{avg_clicks_per_min:.1f}[/yellow]")
+
+        return Panel(grid, title="[bold]💡 Productivity Insights[/bold]", border_style="yellow")
+
+    def _generate_display(self) -> Layout:
+        """Generate rich TUI display layout"""
+        layout = Layout()
+
+        # Create main layout structure
+        layout.split_column(
+            Layout(name="header", size=3),
+            Layout(name="main", ratio=1),
+            Layout(name="footer", size=1)
+        )
+
+        # Split main into left and right
+        layout["main"].split_row(
+            Layout(name="left", ratio=2),
+            Layout(name="right", ratio=1)
+        )
+
+        # Split left into top and bottom
+        layout["left"].split_column(
+            Layout(name="metrics", ratio=1),
+            Layout(name="apps", ratio=2)
+        )
+
+        # Split right into current and productivity
+        layout["right"].split_column(
+            Layout(name="current", ratio=1),
+            Layout(name="productivity", ratio=1)
+        )
+
+        # Populate panels
+        layout["header"].update(self._generate_header())
+        layout["metrics"].update(self._generate_metrics_panel())
+        layout["apps"].update(self._generate_top_apps_panel())
+        layout["current"].update(self._generate_current_window_panel())
+        layout["productivity"].update(self._generate_productivity_panel())
+
+        # Footer
+        footer_text = Text()
+        footer_text.append("Press ", style="dim")
+        footer_text.append("Ctrl+C", style="bold red")
+        footer_text.append(" to quit  •  ", style="dim")
+        footer_text.append(f"Data: {self.settings.data_dir}", style="dim cyan")
+        layout["footer"].update(Align.center(footer_text))
+
         return layout
 
     async def start(self):
@@ -194,6 +434,13 @@ class ActivityMonitor:
         try:
             char = key.char if hasattr(key, "char") else str(key)
             self.stats["keystrokes"] += 1
+            self.current_second_keys += 1
+
+            # Track per-app metrics
+            if self.stats.get("last_window"):
+                app_name = self.stats["last_window"].get("process", "Unknown")
+                self.app_usage[app_name]["keys"] += 1
+
             # Use put_nowait for thread-safe queue access from pynput thread
             try:
                 self.buffer.put_nowait({"type": "key", "key": char, "time": datetime.now()})
@@ -217,6 +464,13 @@ class ActivityMonitor:
             if pressed:
                 button_num = 1 if button == mouse.Button.left else 3
                 self.stats["clicks"] += 1
+                self.current_second_clicks += 1
+
+                # Track per-app metrics
+                if self.stats.get("last_window"):
+                    app_name = self.stats["last_window"].get("process", "Unknown")
+                    self.app_usage[app_name]["clicks"] += 1
+
                 # Buffer click for async storage using thread-safe queue
                 try:
                     self.buffer.put_nowait({
@@ -305,6 +559,11 @@ class ActivityMonitor:
                 self.current_window = window_info
                 self.stats["windows"] += 1
                 self.stats["last_window"] = window_info
+
+                # Track per-app window count
+                app_name = window_info.get("process", "Unknown")
+                self.app_usage[app_name]["windows"] += 1
+
                 await self.store.update_window_info(
                     window_info["process"], window_info["title"], window_info.get("bundle", "")
                 )
