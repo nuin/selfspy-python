@@ -233,9 +233,10 @@ class ActivityMonitor:
             activity = metrics["keys"] + metrics["clicks"]
             percentage = (activity / total_activity * 100) if total_activity > 0 else 0
 
-            # Create mini progress bar
-            bar_length = int(percentage / 5)  # Scale to 20 chars max
-            bar = "█" * bar_length + "░" * (20 - bar_length)
+            # Create mini progress bar - limit to 10 chars for proper alignment
+            max_bar_width = 10
+            bar_length = int((percentage / 100) * max_bar_width)
+            bar = "█" * bar_length + "░" * (max_bar_width - bar_length)
 
             table.add_row(
                 app_name[:20],
