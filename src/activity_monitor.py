@@ -5,6 +5,7 @@ Activity monitoring implementation
 import asyncio
 import logging
 import platform
+from asyncio import Queue
 from datetime import datetime
 from typing import Any, Dict, Optional
 
@@ -29,9 +30,11 @@ class ActivityMonitor:
         self.settings = settings
         self.store = store
         self.current_window: Optional[Dict[str, str]] = None
-        self.buffer: list[Dict[str, Any]] = []
+        # Use asyncio Queue for thread-safe buffer
+        self.buffer: Queue = Queue(maxsize=1000)  # Limit queue size to prevent memory issues
         self.last_activity = datetime.now()
         self.running = False
+        self._shutdown_event = asyncio.Event()
 
         # Initialize stats
         self.stats = {
@@ -123,6 +126,10 @@ class ActivityMonitor:
         """Start monitoring asynchronously"""
         logger.info("Starting activity monitor...")
 
+        # Initialize the activity store
+        await self.store.initialize()
+        logger.info("Activity store initialized")
+
         if platform.system() == "Darwin":
             try:
                 from ApplicationServices import AXIsProcessTrusted
@@ -143,31 +150,55 @@ class ActivityMonitor:
         # Start terminal tracking in background
         asyncio.create_task(self.terminal_tracker.start_tracking())
 
-        with Live(self._generate_display(), refresh_per_second=1) as live:
-            self.live_display = live
-            while self.running:
-                try:
-                    await self._check_active_window()
-                    await self._flush_buffer()
-                    if self.live_display:
-                        self.live_display.update(self._generate_display())
-                    await asyncio.sleep(self.settings.active_window_check_interval)
-                except Exception as e:
-                    logger.error("Monitor error", error=str(e))
+        try:
+            with Live(self._generate_display(), refresh_per_second=1) as live:
+                self.live_display = live
+                while self.running and not self._shutdown_event.is_set():
+                    try:
+                        await self._check_active_window()
+                        await self._flush_buffer()
+                        if self.live_display:
+                            self.live_display.update(self._generate_display())
+                        await asyncio.sleep(self.settings.active_window_check_interval)
+                    except Exception as e:
+                        logger.error("Monitor error", error=str(e))
+        finally:
+            # Ensure cleanup happens
+            await self._cleanup()
 
     async def stop(self):
-        """Stop monitoring"""
+        """Stop monitoring gracefully"""
         logger.info("Stopping activity monitor...")
         self.running = False
-        self.input_tracker.stop()
-        await self._flush_buffer()
+        self._shutdown_event.set()
+
+    async def _cleanup(self):
+        """Cleanup resources and flush remaining data"""
+        logger.info("Cleaning up activity monitor...")
+
+        # Stop input tracking
+        if hasattr(self, 'input_tracker'):
+            self.input_tracker.stop()
+
+        # Flush any remaining buffered data
+        await self._flush_buffer(force=True)
+
+        # Close database connection
+        if hasattr(self, 'store'):
+            await self.store.close()
+
+        logger.info("Activity monitor cleanup complete")
 
     def _on_key_press(self, key):
         """Handle key press events"""
         try:
             char = key.char if hasattr(key, "char") else str(key)
             self.stats["keystrokes"] += 1
-            self.buffer.append({"type": "key", "key": char, "time": datetime.now()})
+            # Use put_nowait for thread-safe queue access from pynput thread
+            try:
+                self.buffer.put_nowait({"type": "key", "key": char, "time": datetime.now()})
+            except asyncio.QueueFull:
+                logger.warning("Buffer queue full, dropping keystroke event")
             self.last_activity = datetime.now()
         except Exception as e:
             logger.error("Key press error", error=str(e))
@@ -186,14 +217,17 @@ class ActivityMonitor:
             if pressed:
                 button_num = 1 if button == mouse.Button.left else 3
                 self.stats["clicks"] += 1
-                # Buffer click for async storage
-                self.buffer.append({
-                    "type": "click", 
-                    "button": button_num, 
-                    "x": x, 
-                    "y": y, 
-                    "time": datetime.now()
-                })
+                # Buffer click for async storage using thread-safe queue
+                try:
+                    self.buffer.put_nowait({
+                        "type": "click",
+                        "button": button_num,
+                        "x": x,
+                        "y": y,
+                        "time": datetime.now()
+                    })
+                except asyncio.QueueFull:
+                    logger.warning("Buffer queue full, dropping click event")
                 self.last_activity = datetime.now()
         except Exception as e:
             logger.error("Mouse click error", error=str(e))
@@ -202,48 +236,65 @@ class ActivityMonitor:
         """Handle scroll events"""
         try:
             button_num = 4 if dy > 0 else 5
-            # Buffer scroll event for async storage
-            self.buffer.append({
-                "type": "click", 
-                "button": button_num, 
-                "x": x, 
-                "y": y, 
-                "time": datetime.now()
-            })
+            # Buffer scroll event for async storage using thread-safe queue
+            try:
+                self.buffer.put_nowait({
+                    "type": "click",
+                    "button": button_num,
+                    "x": x,
+                    "y": y,
+                    "time": datetime.now()
+                })
+            except asyncio.QueueFull:
+                logger.warning("Buffer queue full, dropping scroll event")
             self.last_activity = datetime.now()
         except Exception as e:
             logger.error("Scroll error", error=str(e))
 
-    async def _flush_buffer(self):
+    async def _flush_buffer(self, force: bool = False):
         """Flush keystroke and click buffer to storage"""
-        if not self.buffer:
+        if self.buffer.empty():
             return
-            
+
         current_time = datetime.now()
         time_since_activity = (current_time - self.last_activity).seconds
-        
+
         # Check if we should flush
         should_flush = (
+            force or
             time_since_activity > self.settings.keystroke_buffer_timeout or
-            len(self.buffer) > 50  # Force flush if buffer gets too large
+            self.buffer.qsize() > 50  # Force flush if buffer gets too large
         )
-        
+
         if should_flush:
+            # Collect all items from queue
+            items = []
+            while not self.buffer.empty():
+                try:
+                    items.append(self.buffer.get_nowait())
+                except asyncio.QueueEmpty:
+                    break
+
             # Process keystrokes
             text = "".join(
-                item["key"] for item in self.buffer if item.get("type") == "key" and isinstance(item.get("key"), str)
+                item["key"] for item in items if item.get("type") == "key" and isinstance(item.get("key"), str)
             )
             if text:
-                await self.store.store_keys(text)
-            
+                try:
+                    await self.store.store_keys(text)
+                except Exception as e:
+                    logger.error("Error storing keystrokes", error=str(e))
+
             # Process clicks
-            clicks = [item for item in self.buffer if item.get("type") == "click"]
+            clicks = [item for item in items if item.get("type") == "click"]
             if clicks:
                 logger.debug(f"Flushing {len(clicks)} clicks to database")
             for click in clicks:
-                await self.store.store_click(click["button"], click["x"], click["y"])
-            
-            self.buffer.clear()
+                try:
+                    await self.store.store_click(click["button"], click["x"], click["y"])
+                except Exception as e:
+                    logger.error("Error storing click", error=str(e))
+
             self.last_activity = current_time
 
     async def _check_active_window(self):

@@ -147,18 +147,46 @@ class TerminalTracker:
             logger.error("Failed to get session info", error=str(e))
             return {}
 
-    def _get_git_branch(self, directory: str) -> Optional[str]:
-        """Get current git branch for directory"""
+    def _sanitize_path(self, directory: str) -> Optional[Path]:
+        """Sanitize and validate directory path"""
         try:
+            path = Path(directory).resolve()
+            # Ensure path exists and is a directory
+            if not path.exists() or not path.is_dir():
+                return None
+            # Prevent path traversal - ensure it's under user's home or common project dirs
+            home = Path.home()
+            allowed_roots = [home, Path("/tmp"), Path("/var/tmp")]
+            if not any(str(path).startswith(str(root)) for root in allowed_roots):
+                logger.warning(f"Suspicious path blocked: {path}")
+                return None
+            return path
+        except (ValueError, OSError) as e:
+            logger.warning(f"Invalid path: {directory}, error: {e}")
+            return None
+
+    def _get_git_branch(self, directory: str) -> Optional[str]:
+        """Get current git branch for directory with path validation"""
+        try:
+            # Validate and sanitize path
+            safe_path = self._sanitize_path(directory)
+            if not safe_path:
+                return None
+
             result = subprocess.run(
                 ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                cwd=directory,
+                cwd=str(safe_path),
                 capture_output=True,
                 text=True,
                 timeout=2,
+                check=False,  # Don't raise on non-zero exit
             )
             return result.stdout.strip() if result.returncode == 0 else None
-        except Exception:
+        except subprocess.TimeoutExpired:
+            logger.warning(f"Git command timed out in {directory}")
+            return None
+        except Exception as e:
+            logger.error(f"Error getting git branch: {e}")
             return None
 
     def _detect_project_type(self, directory: str) -> Optional[str]:

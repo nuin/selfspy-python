@@ -62,16 +62,22 @@ def start(
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
+        # Graceful shutdown handler
         def signal_handler(signum, frame):
+            console.print("\n[yellow]Received shutdown signal, cleaning up...[/yellow]")
             if monitor.running:
+                # Schedule stop and wait for it to complete
                 loop.create_task(monitor.stop())
-                loop.stop()
 
         for sig in (signal.SIGTERM, signal.SIGINT):
             signal.signal(sig, signal_handler)
 
         console.print("[green]Starting Selfspy monitor...[/green]")
-        loop.run_until_complete(monitor.start())
+        try:
+            loop.run_until_complete(monitor.start())
+        except KeyboardInterrupt:
+            console.print("\n[yellow]Keyboard interrupt received, shutting down gracefully...[/yellow]")
+            loop.run_until_complete(monitor.stop())
 
     except KeyboardInterrupt:
         console.print("\n[yellow]Shutting down gracefully...[/yellow]")
@@ -80,6 +86,11 @@ def start(
         raise typer.Exit(1)
     finally:
         if "loop" in locals():
+            # Give tasks time to complete before closing loop
+            pending = asyncio.all_tasks(loop)
+            for task in pending:
+                task.cancel()
+            loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
             loop.close()
 
 

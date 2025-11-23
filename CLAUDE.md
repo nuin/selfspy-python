@@ -96,7 +96,11 @@ mypy src/
 Python/PyObjC implementations for macOS desktop widgets:
 - `simple_widget.py`: Standalone widget with simulated data
 - `selfspy_desktop_advanced.py`: Multi-widget system with real data integration
+- `widget_types.py`: Widget type definitions and customization
+- `data_integration.py`: Live data integration with Selfspy database
 - Uses native Cocoa APIs via PyObjC for always-on-top, draggable windows
+
+**Important**: Desktop widgets use `sys.path.append()` (not `insert()`) to prevent shadowing Python's stdlib `platform` module, and import using `from src.` prefix for explicit package imports
 
 ### CLI Structure
 

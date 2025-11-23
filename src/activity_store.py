@@ -3,9 +3,12 @@ Activity data storage implementation
 """
 
 import asyncio
+from pathlib import Path
 from typing import Optional, Tuple
 
 import structlog
+from alembic import command
+from alembic.config import Config
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.future import select
 from sqlalchemy.orm import sessionmaker
@@ -21,39 +24,75 @@ class ActivityStore:
     """Asynchronous activity data store"""
 
     def __init__(self, settings: Settings, password: Optional[str] = None):
-        """Initialize activity store"""
+        """Initialize activity store (sync only - call initialize() to complete setup)"""
         self.settings = settings
         self.password = password
 
         # Initialize SQLAlchemy engine
         self.engine = create_async_engine(
-            f"sqlite+aiosqlite:///{settings.database_path}", echo=settings.debug
+            f"sqlite+aiosqlite:///{settings.database_path}",
+            echo=settings.debug,
+            pool_pre_ping=True,  # Enable connection health checks
         )
-
-        # Create tables on startup
-        async def init_db():
-            async with self.engine.begin() as conn:
-                await conn.run_sync(Base.metadata.create_all)
-
-        asyncio.run(init_db())
 
         self.async_session = sessionmaker(
             self.engine, class_=AsyncSession, expire_on_commit=False
         )
 
-        self.cipher = create_cipher(password) if password else None
+        # Create cipher with installation-specific salt
+        self.cipher = create_cipher(password, settings.data_dir) if password else None
         self.current_window_id: Optional[int] = None
         self.current_process_id: Optional[int] = None
+        self._initialized = False
+
+    def _run_migrations(self):
+        """Run Alembic migrations to upgrade database schema"""
+        try:
+            # Find the alembic.ini file
+            project_root = Path(__file__).parent.parent
+            alembic_cfg_path = project_root / "alembic.ini"
+
+            if not alembic_cfg_path.exists():
+                logger.warning("No alembic.ini found, skipping migrations")
+                return
+
+            # Configure Alembic
+            alembic_cfg = Config(str(alembic_cfg_path))
+            alembic_cfg.set_main_option("sqlalchemy.url", str(self.settings.database_path).replace("sqlite:///", "sqlite:///"))
+
+            # Run migrations to head
+            command.upgrade(alembic_cfg, "head")
+            logger.info("Database migrations completed successfully")
+
+        except Exception as e:
+            logger.warning(f"Migration failed, will use create_all fallback: {e}")
+            # Fallback to create_all if migrations fail
+            raise
 
     async def initialize(self):
-        """Initialize database"""
-        async with self.engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+        """Initialize database and verify encryption password"""
+        if self._initialized:
+            return
 
+        # Try to run migrations first
+        try:
+            await asyncio.to_thread(self._run_migrations)
+        except Exception as e:
+            logger.info(f"Migrations not available or failed ({e}), using create_all")
+            # Fallback: Create tables if they don't exist
+            async with self.engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+
+        # Verify encryption password if encryption is enabled
         if self.settings.encryption_enabled:
-            await check_password(
+            password_valid = await check_password(
                 self.settings.data_dir, self.cipher, self.settings.read_only
             )
+            if not password_valid:
+                raise ValueError("Invalid encryption password")
+
+        self._initialized = True
+        logger.info("Activity store initialized successfully")
 
     async def update_window_info(
         self,
