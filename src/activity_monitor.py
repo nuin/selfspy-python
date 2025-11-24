@@ -220,11 +220,11 @@ class ActivityMonitor:
             )
 
         table = Table(show_header=True, header_style="bold cyan", box=None)
-        table.add_column("App", style="white")
+        table.add_column("App", style="white", width=20)
         table.add_column("Keys", justify="right", style="green")
         table.add_column("Clicks", justify="right", style="yellow")
         table.add_column("Windows", justify="right", style="magenta")
-        table.add_column("Activity", justify="right")
+        table.add_column("Activity", justify="left", width=20)
 
         # Calculate total for percentages
         total_activity = sum(app["keys"] + app["clicks"] for _, app in sorted_apps)
@@ -233,17 +233,20 @@ class ActivityMonitor:
             activity = metrics["keys"] + metrics["clicks"]
             percentage = (activity / total_activity * 100) if total_activity > 0 else 0
 
-            # Create mini progress bar - limit to 10 chars for proper alignment
+            # Create mini progress bar - use only filled blocks, fixed format
             max_bar_width = 10
             bar_length = int((percentage / 100) * max_bar_width)
-            bar = "█" * bar_length + "░" * (max_bar_width - bar_length)
+            bar = "█" * bar_length
+
+            # Fixed width format: bar padded to 10 chars + space + percentage
+            activity_display = f"{bar:<10} {percentage:5.1f}%"
 
             table.add_row(
                 app_name[:20],
                 f"{metrics['keys']:,}",
                 f"{metrics['clicks']:,}",
                 str(metrics['windows']),
-                f"{bar} {percentage:.1f}%"
+                activity_display
             )
 
         return Panel(table, title="[bold]🏆 Top Applications[/bold]", border_style="blue")
