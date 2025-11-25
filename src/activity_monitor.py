@@ -68,6 +68,10 @@ class ActivityMonitor:
         self.session_active_seconds = 0
         self.session_idle_seconds = 0
 
+        # Historical comparison data
+        self.yesterday_data: Optional[Dict[str, Any]] = None
+        self.yesterday_fetched = False
+
         # Configure logging
         log_level = logging.DEBUG if debug else logging.INFO
         structlog.configure(
@@ -151,15 +155,26 @@ class ActivityMonitor:
         minutes = (duration.seconds % 3600) // 60
         seconds = duration.seconds % 60
 
+        # Calculate active/idle percentages
+        total_seconds = self.session_active_seconds + self.session_idle_seconds
+        active_pct = (self.session_active_seconds / total_seconds * 100) if total_seconds > 0 else 100
+
+        # Idle status indicator
+        idle_indicator = "💤 IDLE" if self.is_idle else "✓ ACTIVE"
+        idle_style = "yellow" if self.is_idle else "green"
+
         grid = Table.grid(padding=1)
         grid.add_column(justify="left", style="cyan bold")
         grid.add_column(justify="center")
         grid.add_column(justify="right", style="magenta bold")
 
+        # Format session time with active percentage
+        session_info = f"⏱  {hours:02d}h {minutes:02d}m {seconds:02d}s  •  {active_pct:.0f}% active"
+
         grid.add_row(
-            f"⏱  Session: {hours:02d}h {minutes:02d}m {seconds:02d}s",
+            session_info,
             Text("SELFSPY ACTIVITY MONITOR", style="bold white"),
-            f"Buffer: {self.buffer.qsize()}/1000"
+            Text(idle_indicator, style=idle_style)
         )
 
         return Panel(grid, style="bold blue")
@@ -328,6 +343,115 @@ class ActivityMonitor:
 
         return Panel(grid, title="[bold]💡 Productivity Insights[/bold]", border_style="yellow")
 
+    def _generate_comparison_panel(self) -> Panel:
+        """Generate comparison with yesterday's data"""
+        if not self.yesterday_data:
+            return Panel(
+                Align.center("[dim]No yesterday data yet[/dim]"),
+                title="[bold]📊 vs Yesterday[/bold]",
+                border_style="cyan"
+            )
+
+        grid = Table.grid(padding=(0, 2))
+        grid.add_column("Metric", style="cyan")
+        grid.add_column("Change", style="white")
+
+        # Calculate differences
+        key_diff = self.stats["keystrokes"] - self.yesterday_data["keystrokes"]
+        click_diff = self.stats["clicks"] - self.yesterday_data["clicks"]
+        active_diff = self.session_active_seconds - self.yesterday_data["active_seconds"]
+
+        # Format with arrows and colors
+        def format_change(diff, total_yesterday):
+            if total_yesterday == 0:
+                return "[dim]N/A[/dim]"
+            pct = (diff / total_yesterday) * 100
+            if abs(pct) < 1:
+                return "[dim]~same[/dim]"
+            arrow = "▲" if diff > 0 else "▼"
+            color = "green" if diff > 0 else "red"
+            return f"[{color}]{arrow} {abs(pct):.0f}%[/{color}]"
+
+        grid.add_row(
+            "⌨  Keystrokes",
+            format_change(key_diff, self.yesterday_data["keystrokes"])
+        )
+        grid.add_row(
+            "🖱  Clicks",
+            format_change(click_diff, self.yesterday_data["clicks"])
+        )
+        grid.add_row(
+            "⚡ Active Time",
+            format_change(active_diff, self.yesterday_data["active_seconds"])
+        )
+
+        # Overall verdict
+        overall_change = (
+            (self.stats["keystrokes"] + self.stats["clicks"]) -
+            (self.yesterday_data["keystrokes"] + self.yesterday_data["clicks"])
+        )
+        yesterday_total = self.yesterday_data["keystrokes"] + self.yesterday_data["clicks"]
+
+        if yesterday_total > 0:
+            pct_change = (overall_change / yesterday_total) * 100
+            if abs(pct_change) < 5:
+                verdict = "[yellow]Similar activity[/yellow]"
+            elif pct_change > 0:
+                verdict = f"[green]▲ {pct_change:.0f}% more active[/green]"
+            else:
+                verdict = f"[red]▼ {abs(pct_change):.0f}% less active[/red]"
+        else:
+            verdict = "[dim]No comparison data[/dim]"
+
+        grid.add_row("", "")
+        grid.add_row("Overall", verdict)
+
+        return Panel(grid, title="[bold]📊 vs Yesterday[/bold]", border_style="cyan")
+
+    async def _fetch_yesterday_data(self):
+        """Fetch yesterday's session data for comparison"""
+        if self.yesterday_fetched:
+            return
+
+        try:
+            from datetime import date
+            from sqlalchemy import func, select
+            from .models import Session, Keys, Click
+
+            yesterday = date.today() - timedelta(days=1)
+            yesterday_start = datetime.combine(yesterday, datetime.min.time())
+            yesterday_end = datetime.combine(yesterday, datetime.max.time())
+
+            async with self.store.async_session() as session:
+                # Get all yesterday's sessions
+                sessions_query = select(Session).where(
+                    Session.start_time >= yesterday_start,
+                    Session.start_time <= yesterday_end
+                )
+                result = await session.execute(sessions_query)
+                sessions = result.scalars().all()
+
+                if sessions:
+                    # Aggregate data from all sessions
+                    total_keystrokes = sum(s.total_keystrokes for s in sessions)
+                    total_clicks = sum(s.total_clicks for s in sessions)
+                    total_active = sum(s.active_seconds for s in sessions)
+                    total_idle = sum(s.idle_seconds for s in sessions)
+
+                    self.yesterday_data = {
+                        "keystrokes": total_keystrokes,
+                        "clicks": total_clicks,
+                        "active_seconds": total_active,
+                        "idle_seconds": total_idle,
+                        "session_count": len(sessions)
+                    }
+                    logger.info(f"Fetched yesterday's data: {len(sessions)} sessions")
+
+            self.yesterday_fetched = True
+        except Exception as e:
+            logger.warning(f"Could not fetch yesterday's data: {e}")
+            self.yesterday_fetched = True  # Don't keep trying
+
     def _generate_display(self) -> Layout:
         """Generate rich TUI display layout"""
         layout = Layout()
@@ -351,10 +475,11 @@ class ActivityMonitor:
             Layout(name="apps", ratio=2)
         )
 
-        # Split right into current and productivity
+        # Split right into three panels
         layout["right"].split_column(
             Layout(name="current", ratio=1),
-            Layout(name="productivity", ratio=1)
+            Layout(name="productivity", ratio=1),
+            Layout(name="comparison", ratio=1)
         )
 
         # Populate panels
@@ -363,6 +488,7 @@ class ActivityMonitor:
         layout["apps"].update(self._generate_top_apps_panel())
         layout["current"].update(self._generate_current_window_panel())
         layout["productivity"].update(self._generate_productivity_panel())
+        layout["comparison"].update(self._generate_comparison_panel())
 
         # Footer
         footer_text = Text()
@@ -408,6 +534,9 @@ class ActivityMonitor:
 
         # Start idle detection task
         asyncio.create_task(self._monitor_idle_state())
+
+        # Fetch yesterday's data for comparison (async background task)
+        asyncio.create_task(self._fetch_yesterday_data())
 
         try:
             with Live(self._generate_display(), refresh_per_second=1) as live:
