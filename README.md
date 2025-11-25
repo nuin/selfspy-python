@@ -72,6 +72,22 @@ Comprehensive documentation is available in the [`docs/`](docs/) directory:
 
 For detailed installation instructions, see the [Installation Guide](docs/installation.md).
 
+## Credits
+
+This project is inspired by and based on the original [Selfspy](https://github.com/selfspy/selfspy) by Bjarte Johansen and David Fendrich. The original Selfspy pioneered the concept of comprehensive activity monitoring with privacy-first local storage and encryption.
+
+This modern Python implementation builds upon that foundation with:
+- Modern async/await patterns with SQLAlchemy 2.0
+- Real-time TUI dashboard with Rich
+- Session tracking and historical analytics
+- Enhanced security and stability
+- macOS native integration with PyObjC
+- Comprehensive testing and documentation
+
+We're grateful to the original authors for creating such an innovative tool and releasing it as open source.
+
 ## License
 
 GPL-3.0-or-later
+
+This project maintains compatibility with the original Selfspy's GPL-3.0 license.

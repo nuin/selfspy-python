@@ -1,8 +1,12 @@
 [project]
 name = "selfspy"
 version = "1.0.0"
-description = "A comprehensive activity monitoring and analytics tool with real-time TUI, session tracking, and productivity insights"
-authors = [{name = "nuin", email = "nuin@genedrift.org"}]
+description = "Modern Python activity monitoring inspired by the original Selfspy, with real-time TUI, session tracking, and productivity insights"
+authors = [
+    {name = "nuin", email = "nuin@genedrift.org"},
+    {name = "Bjarte Johansen (original Selfspy)"},
+    {name = "David Fendrich (original Selfspy)"}
+]
 readme = "README.md"
 license = {text = "GPL-3.0-or-later"}
 requires-python = ">=3.10"
