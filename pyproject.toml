@@ -1,11 +1,35 @@
 [project]
 name = "selfspy"
 version = "1.0.0"
-description = "A tool for monitoring and analyzing your computer activity"
+description = "A comprehensive activity monitoring and analytics tool with real-time TUI, session tracking, and productivity insights"
 authors = [{name = "nuin", email = "nuin@genedrift.org"}]
 readme = "README.md"
 license = {text = "GPL-3.0-or-later"}
 requires-python = ">=3.10"
+keywords = [
+    "activity-monitor",
+    "productivity",
+    "analytics",
+    "keystroke-logger",
+    "time-tracking",
+    "session-tracking",
+    "tui",
+    "macos"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Monitoring",
+    "Topic :: Utilities",
+]
 dependencies = [
     "SQLAlchemy>=2.0.25",
     "alembic>=1.13.0",
@@ -43,6 +67,11 @@ dev = [
     "ruff>=0.1.11",
     "pre-commit>=3.6.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/nuin/selfspy-python"
+Repository = "https://github.com/nuin/selfspy-python"
+Issues = "https://github.com/nuin/selfspy-python/issues"
 
 [dependency-groups]
 dev = [

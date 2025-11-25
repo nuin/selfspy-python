@@ -1,27 +1,58 @@
-# Selfspy Python Implementation
+# Selfspy
 
-The original and most feature-complete implementation of Selfspy, built with modern Python practices.
+[![PyPI](https://img.shields.io/pypi/v/selfspy)](https://pypi.org/project/selfspy/)
+[![Python](https://img.shields.io/pypi/pyversions/selfspy)](https://pypi.org/project/selfspy/)
+[![License](https://img.shields.io/github/license/nuin/selfspy-python)](LICENSE)
 
-## Quick Start
-
-```bash
-# Install dependencies
-uv sync --group dev --extra macos
-
-# Start monitoring
-uv run selfspy start
-
-# View statistics
-uv run selfviz enhanced
-```
+A comprehensive activity monitoring and analytics tool with real-time TUI, session tracking, and productivity insights. Built with modern Python for macOS and Linux.
 
 ## Features
 
-- **Comprehensive Monitoring**: Keystrokes, mouse, windows, terminal commands
-- **Rich Visualizations**: Beautiful CLI charts and graphs
-- **Desktop Widgets**: Native macOS widgets for always-visible activity
-- **Terminal Analytics**: Development workflow analysis with git integration
-- **Privacy-First**: Local encryption, configurable exclusions
+- 🎯 **Real-time TUI Dashboard** - Beautiful terminal UI with sparklines, metrics, and live updates
+- 📊 **Session Tracking** - Track activity across multiple sessions with start/end times
+- 💤 **Idle Detection** - Distinguish between active work and idle time (3-minute threshold)
+- 📈 **Historical Comparison** - Compare today's activity vs yesterday with visual indicators
+- ⚡ **Focus Time Tracking** - See actual time spent in each application
+- 🔐 **Privacy-First** - Optional encryption, local storage, configurable exclusions
+- 🎨 **Rich Visualizations** - Enhanced statistics with charts, graphs, and insights
+- 🖥️ **macOS Native** - Full window tracking with PyObjC integration
+- 🐧 **Linux Support** - Cross-platform with fallback tracking
+
+## Quick Start
+
+### Installation
+
+```bash
+# From PyPI (when published)
+pip install selfspy
+
+# On macOS (recommended for full features)
+pip install selfspy[macos]
+
+# With pipx (isolated environment)
+pipx install selfspy[macos]
+
+# With uv (fastest)
+uv tool install selfspy --with selfspy[macos]
+```
+
+### Usage
+
+```bash
+# Start monitoring with live TUI
+selfspy start
+
+# View enhanced statistics
+selfstats summary --days 7
+
+# View visualizations
+selfviz enhanced
+
+# Check terminal activity
+selfterminal stats
+```
+
+See [INSTALL.md](INSTALL.md) for detailed installation instructions.
 
 ## Documentation
 
