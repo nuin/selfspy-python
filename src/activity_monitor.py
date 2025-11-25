@@ -60,6 +60,14 @@ class ActivityMonitor:
         self.current_second_keys = 0
         self.current_second_clicks = 0
 
+        # Idle detection (3 minutes without activity = idle)
+        self.idle_threshold = timedelta(minutes=3)
+        self.last_activity_time = datetime.now()
+        self.is_idle = False
+        self.idle_start_time: Optional[datetime] = None
+        self.session_active_seconds = 0
+        self.session_idle_seconds = 0
+
         # Configure logging
         log_level = logging.DEBUG if debug else logging.INFO
         structlog.configure(
@@ -374,6 +382,10 @@ class ActivityMonitor:
         await self.store.initialize()
         logger.info("Activity store initialized")
 
+        # Start new monitoring session
+        await self.store.start_session()
+        logger.info(f"Started session {self.store.current_session_id}")
+
         if platform.system() == "Darwin":
             try:
                 from ApplicationServices import AXIsProcessTrusted
@@ -393,6 +405,9 @@ class ActivityMonitor:
 
         # Start terminal tracking in background
         asyncio.create_task(self.terminal_tracker.start_tracking())
+
+        # Start idle detection task
+        asyncio.create_task(self._monitor_idle_state())
 
         try:
             with Live(self._generate_display(), refresh_per_second=1) as live:
@@ -416,6 +431,36 @@ class ActivityMonitor:
         self.running = False
         self._shutdown_event.set()
 
+    async def _monitor_idle_state(self):
+        """Monitor idle state and update session metrics"""
+        while self.running:
+            now = datetime.now()
+            time_since_activity = now - self.last_activity_time
+
+            # Check if we've gone idle
+            if not self.is_idle and time_since_activity > self.idle_threshold:
+                self.is_idle = True
+                self.idle_start_time = self.last_activity_time + self.idle_threshold
+                logger.info(f"User went idle after {self.idle_threshold.total_seconds()}s of inactivity")
+
+            # Check if we've resumed activity
+            elif self.is_idle and time_since_activity <= self.idle_threshold:
+                self.is_idle = False
+                if self.idle_start_time:
+                    idle_duration = int((now - self.idle_start_time).total_seconds())
+                    self.session_idle_seconds += idle_duration
+                    # Update session metrics
+                    await self.store.update_session_metrics(idle_seconds=idle_duration)
+                    logger.info(f"User resumed activity after {idle_duration}s idle")
+                self.idle_start_time = None
+
+            # Update active time if not idle
+            if not self.is_idle:
+                self.session_active_seconds += 1
+                await self.store.update_session_metrics(active_seconds=1)
+
+            await asyncio.sleep(1)
+
     async def _cleanup(self):
         """Cleanup resources and flush remaining data"""
         logger.info("Cleaning up activity monitor...")
@@ -427,7 +472,12 @@ class ActivityMonitor:
         # Flush any remaining buffered data
         await self._flush_buffer(force=True)
 
-        # Close database connection
+        # Update final session metrics
+        if self.is_idle and self.idle_start_time:
+            idle_duration = int((datetime.now() - self.idle_start_time).total_seconds())
+            await self.store.update_session_metrics(idle_seconds=idle_duration)
+
+        # Close database connection (this will end the session)
         if hasattr(self, 'store'):
             await self.store.close()
 
@@ -436,6 +486,9 @@ class ActivityMonitor:
     def _on_key_press(self, key):
         """Handle key press events"""
         try:
+            # Reset idle state
+            self.last_activity_time = datetime.now()
+
             char = key.char if hasattr(key, "char") else str(key)
             self.stats["keystrokes"] += 1
             self.current_second_keys += 1
@@ -466,6 +519,9 @@ class ActivityMonitor:
         """Handle mouse clicks"""
         try:
             if pressed:
+                # Reset idle state
+                self.last_activity_time = datetime.now()
+
                 button_num = 1 if button == mouse.Button.left else 3
                 self.stats["clicks"] += 1
                 self.current_second_clicks += 1

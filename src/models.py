@@ -24,6 +24,29 @@ class TimestampMixin:
     )
 
 
+class Session(TimestampMixin, Base):
+    """Monitoring session information"""
+
+    __tablename__ = "session"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    start_time: Mapped[datetime] = mapped_column(index=True)
+    end_time: Mapped[Optional[datetime]] = mapped_column(index=True)
+
+    # Session metrics
+    total_keystrokes: Mapped[int] = mapped_column(default=0)
+    total_clicks: Mapped[int] = mapped_column(default=0)
+    active_seconds: Mapped[int] = mapped_column(default=0)  # Time with activity
+    idle_seconds: Mapped[int] = mapped_column(default=0)  # Time without activity
+
+    # Session metadata
+    hostname: Mapped[Optional[str]]
+    platform: Mapped[Optional[str]]  # darwin, linux, windows
+
+    def __repr__(self) -> str:
+        return f"<Session {self.start_time} - {self.end_time}>"
+
+
 class Process(TimestampMixin, Base):
     """Process information"""
 
@@ -58,11 +81,20 @@ class Window(TimestampMixin, Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(Text, index=True)
     process_id: Mapped[int] = mapped_column(ForeignKey("process.id"), index=True)
+    session_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("session.id"), index=True
+    )
 
     # macOS specific fields
     bundle_id: Mapped[Optional[str]] = mapped_column(index=True)
     is_minimized: Mapped[bool] = mapped_column(Boolean, default=False)
     is_fullscreen: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Focus time tracking
+    focus_seconds: Mapped[int] = mapped_column(
+        default=0
+    )  # Time with keyboard/mouse activity
+    last_activity_at: Mapped[Optional[datetime]]  # Last input event timestamp
 
     # Window geometry
     geometry_x: Mapped[Optional[int]]

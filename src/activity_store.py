@@ -15,7 +15,7 @@ from sqlalchemy.orm import sessionmaker
 
 from .config import Settings
 from .encryption import check_password, create_cipher
-from .models import Base, Click, Keys, Process, Window
+from .models import Base, Click, Keys, Process, Window, Session
 
 logger = structlog.get_logger()
 
@@ -43,6 +43,7 @@ class ActivityStore:
         self.cipher = create_cipher(password, settings.data_dir) if password else None
         self.current_window_id: Optional[int] = None
         self.current_process_id: Optional[int] = None
+        self.current_session_id: Optional[int] = None
         self._initialized = False
 
     def _run_migrations(self):
@@ -117,7 +118,11 @@ class ActivityStore:
                 self.current_process_id = process.id
 
                 # Create window record
-                window = Window(title=window_title, process_id=process.id)
+                window = Window(
+                    title=window_title,
+                    process_id=process.id,
+                    session_id=self.current_session_id
+                )
 
                 # Add geometry if provided
                 if geometry:
@@ -175,6 +180,79 @@ class ActivityStore:
         padded_text = text + "\0" * padding
         return self.cipher.encrypt(padded_text.encode())
 
+    async def start_session(self, hostname: str = None, platform: str = None) -> int:
+        """Start a new monitoring session"""
+        import socket
+        import sys
+        from datetime import datetime
+
+        if hostname is None:
+            hostname = socket.gethostname()
+        if platform is None:
+            platform = sys.platform
+
+        async with self.async_session() as session:
+            async with session.begin():
+                new_session = Session(
+                    start_time=datetime.now(),
+                    hostname=hostname,
+                    platform=platform,
+                )
+                session.add(new_session)
+                await session.flush()
+                self.current_session_id = new_session.id
+                logger.info(f"Started new session: {self.current_session_id}")
+                return new_session.id
+
+    async def end_session(self):
+        """End the current monitoring session"""
+        if not self.current_session_id:
+            return
+
+        from datetime import datetime
+
+        async with self.async_session() as session:
+            async with session.begin():
+                db_session = await session.get(Session, self.current_session_id)
+                if db_session:
+                    db_session.end_time = datetime.now()
+                    logger.info(f"Ended session: {self.current_session_id}")
+
+        self.current_session_id = None
+
+    async def update_session_metrics(
+        self, keystrokes: int = 0, clicks: int = 0, active_seconds: int = 0, idle_seconds: int = 0
+    ):
+        """Update session metrics"""
+        if not self.current_session_id:
+            return
+
+        async with self.async_session() as session:
+            async with session.begin():
+                db_session = await session.get(Session, self.current_session_id)
+                if db_session:
+                    if keystrokes:
+                        db_session.total_keystrokes += keystrokes
+                    if clicks:
+                        db_session.total_clicks += clicks
+                    if active_seconds:
+                        db_session.active_seconds += active_seconds
+                    if idle_seconds:
+                        db_session.idle_seconds += idle_seconds
+
+    async def update_window_focus_time(self, window_id: int, focus_seconds: int):
+        """Update focus time for a window"""
+        from datetime import datetime
+
+        async with self.async_session() as session:
+            async with session.begin():
+                window = await session.get(Window, window_id)
+                if window:
+                    window.focus_seconds += focus_seconds
+                    window.last_activity_at = datetime.now()
+
     async def close(self):
         """Clean up database connection"""
+        # End current session if active
+        await self.end_session()
         await self.engine.dispose()

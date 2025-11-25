@@ -252,8 +252,9 @@ def _display_stats(stats, days):
             # Medal for top 3
             rank = f"🥇" if idx == 1 else f"🥈" if idx == 2 else f"🥉" if idx == 3 else f"{idx:2d}"
 
-            # Progress bar
-            bar_length = int(percentage / 2)  # Scale to 50 chars max
+            # Progress bar - limit to 15 characters max for proper alignment
+            max_bar_width = 15
+            bar_length = int((percentage / 100) * max_bar_width)
             bar = "█" * bar_length
 
             apps_table.add_row(
