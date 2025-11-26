@@ -166,7 +166,7 @@ class ActivityMonitor:
         )
 
         # Idle status indicator
-        idle_indicator = "💤 IDLE" if self.is_idle else "✓ ACTIVE"
+        idle_indicator = "IDLE" if self.is_idle else "ACTIVE"
         idle_style = "yellow" if self.is_idle else "green"
 
         grid = Table.grid(padding=1)
@@ -175,7 +175,7 @@ class ActivityMonitor:
         grid.add_column(justify="right", style="magenta bold")
 
         # Format session time with active percentage
-        session_info = f"⏱  {hours:02d}h {minutes:02d}m {seconds:02d}s  •  {active_pct:.0f}% active"
+        session_info = f"{hours:02d}h {minutes:02d}m {seconds:02d}s  •  {active_pct:.0f}% active"
 
         grid.add_row(
             session_info,
@@ -210,29 +210,29 @@ class ActivityMonitor:
         recent_clicks = sum(self.click_history) if self.click_history else 0
 
         table.add_row(
-            "⌨  Keystrokes",
+            "Keystrokes",
             f"{self.stats['keystrokes']:,}",
             self._create_sparkline(self.keystroke_history, max_val=100),
             f"{keys_per_min}/min",
         )
         table.add_row(
-            "🖱  Clicks",
+            "Clicks",
             f"{self.stats['clicks']:,}",
             self._create_sparkline(self.click_history, max_val=50),
             f"{clicks_per_min}/min",
         )
         table.add_row(
-            "🪟  Windows",
+            "Windows",
             f"{self.stats['windows']:,}",
             "",
             f"{len(self.app_usage)} apps",
         )
         table.add_row(
-            "🔄  Recent Activity", f"{recent_keys + recent_clicks:,}", "", "last 60s"
+            "Recent Activity", f"{recent_keys + recent_clicks:,}", "", "last 60s"
         )
 
         return Panel(
-            table, title="[bold]📊 Real-time Metrics[/bold]", border_style="green"
+            table, title="[bold]Real-time Metrics[/bold]", border_style="green"
         )
 
     def _generate_top_apps_panel(self) -> Panel:
@@ -247,7 +247,7 @@ class ActivityMonitor:
         if not sorted_apps:
             return Panel(
                 Align.center("[dim]No application data yet...[/dim]"),
-                title="[bold]🏆 Top Applications[/bold]",
+                title="[bold]Top Applications[/bold]",
                 border_style="blue",
             )
 
@@ -282,7 +282,7 @@ class ActivityMonitor:
             )
 
         return Panel(
-            table, title="[bold]🏆 Top Applications[/bold]", border_style="blue"
+            table, title="[bold]Top Applications[/bold]", border_style="blue"
         )
 
     def _generate_current_window_panel(self) -> Panel:
@@ -314,7 +314,7 @@ class ActivityMonitor:
             content = grid
 
         return Panel(
-            content, title="[bold]🎯 Current Focus[/bold]", border_style="magenta"
+            content, title="[bold]Current Focus[/bold]", border_style="magenta"
         )
 
     def _generate_productivity_panel(self) -> Panel:
@@ -331,15 +331,15 @@ class ActivityMonitor:
 
             # Determine activity level
             if activity_score > 80:
-                activity_level = "[bold green]Very High ⚡[/bold green]"
+                activity_level = "[bold green]Very High[/bold green]"
             elif activity_score > 60:
-                activity_level = "[green]High 📈[/green]"
+                activity_level = "[green]High[/green]"
             elif activity_score > 40:
-                activity_level = "[yellow]Moderate 📊[/yellow]"
+                activity_level = "[yellow]Moderate[/yellow]"
             elif activity_score > 20:
-                activity_level = "[yellow]Low 📉[/yellow]"
+                activity_level = "[yellow]Low[/yellow]"
             else:
-                activity_level = "[dim]Very Low 💤[/dim]"
+                activity_level = "[dim]Very Low[/dim]"
         else:
             activity_score = 0
             activity_level = "[dim]Starting...[/dim]"
@@ -359,7 +359,7 @@ class ActivityMonitor:
             )
 
         return Panel(
-            grid, title="[bold]💡 Productivity Insights[/bold]", border_style="yellow"
+            grid, title="[bold]Productivity Insights[/bold]", border_style="yellow"
         )
 
     def _generate_comparison_panel(self) -> Panel:
@@ -367,7 +367,7 @@ class ActivityMonitor:
         if not self.yesterday_data:
             return Panel(
                 Align.center("[dim]No yesterday data yet[/dim]"),
-                title="[bold]📊 vs Yesterday[/bold]",
+                title="[bold]vs Yesterday[/bold]",
                 border_style="cyan",
             )
 
@@ -394,13 +394,13 @@ class ActivityMonitor:
             return f"[{color}]{arrow} {abs(pct):.0f}%[/{color}]"
 
         grid.add_row(
-            "⌨  Keystrokes", format_change(key_diff, self.yesterday_data["keystrokes"])
+            "Keystrokes", format_change(key_diff, self.yesterday_data["keystrokes"])
         )
         grid.add_row(
-            "🖱  Clicks", format_change(click_diff, self.yesterday_data["clicks"])
+            "Clicks", format_change(click_diff, self.yesterday_data["clicks"])
         )
         grid.add_row(
-            "⚡ Active Time",
+            "Active Time",
             format_change(active_diff, self.yesterday_data["active_seconds"]),
         )
 
@@ -426,7 +426,7 @@ class ActivityMonitor:
         grid.add_row("", "")
         grid.add_row("Overall", verdict)
 
-        return Panel(grid, title="[bold]📊 vs Yesterday[/bold]", border_style="cyan")
+        return Panel(grid, title="[bold]vs Yesterday[/bold]", border_style="cyan")
 
     async def _fetch_yesterday_data(self):
         """Fetch yesterday's session data for comparison"""
