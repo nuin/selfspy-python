@@ -8,15 +8,15 @@ A comprehensive activity monitoring and analytics tool with real-time TUI, sessi
 
 ## Features
 
-- 🎯 **Real-time TUI Dashboard** - Beautiful terminal UI with sparklines, metrics, and live updates
-- 📊 **Session Tracking** - Track activity across multiple sessions with start/end times
-- 💤 **Idle Detection** - Distinguish between active work and idle time (3-minute threshold)
-- 📈 **Historical Comparison** - Compare today's activity vs yesterday with visual indicators
-- ⚡ **Focus Time Tracking** - See actual time spent in each application
-- 🔐 **Privacy-First** - Optional encryption, local storage, configurable exclusions
-- 🎨 **Rich Visualizations** - Enhanced statistics with charts, graphs, and insights
-- 🖥️ **macOS Native** - Full window tracking with PyObjC integration
-- 🐧 **Linux Support** - Cross-platform with fallback tracking
+- **Real-time TUI Dashboard** - Beautiful terminal UI with sparklines, metrics, and live updates
+- **Session Tracking** - Track activity across multiple sessions with start/end times
+- **Idle Detection** - Distinguish between active work and idle time (3-minute threshold)
+- **Historical Comparison** - Compare today's activity vs yesterday with visual indicators
+- **Focus Time Tracking** - See actual time spent in each application
+- **Privacy-First** - Optional encryption, local storage, configurable exclusions
+- **Rich Visualizations** - Enhanced statistics with charts, graphs, and insights
+- **macOS Native** - Full window tracking with PyObjC integration
+- **Linux Support** - Cross-platform with fallback tracking
 
 ## Quick Start
 

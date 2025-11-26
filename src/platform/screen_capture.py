@@ -2,6 +2,7 @@
 """
 Enhanced screen capture functionality for macOS with periodic and smart capture modes
 """
+
 import asyncio
 import json
 from datetime import datetime, timedelta

@@ -13,11 +13,9 @@ from typing import Any, Dict, Optional
 import structlog
 from pynput import mouse
 from rich.align import Align
-from rich.console import Group
 from rich.layout import Layout
 from rich.live import Live
 from rich.panel import Panel
-from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 from rich.text import Text
 
@@ -37,7 +35,9 @@ class ActivityMonitor:
         self.store = store
         self.current_window: Optional[Dict[str, str]] = None
         # Use asyncio Queue for thread-safe buffer
-        self.buffer: Queue = Queue(maxsize=1000)  # Limit queue size to prevent memory issues
+        self.buffer: Queue = Queue(
+            maxsize=1000
+        )  # Limit queue size to prevent memory issues
         self.last_activity = datetime.now()
         self.running = False
         self._shutdown_event = asyncio.Event()
@@ -55,7 +55,9 @@ class ActivityMonitor:
         # Rich metrics tracking
         self.keystroke_history = deque(maxlen=60)  # Last 60 seconds
         self.click_history = deque(maxlen=60)
-        self.app_usage = defaultdict(lambda: {"time": 0, "keys": 0, "clicks": 0, "windows": 0})
+        self.app_usage = defaultdict(
+            lambda: {"time": 0, "keys": 0, "clicks": 0, "windows": 0}
+        )
         self.last_metric_time = datetime.now()
         self.current_second_keys = 0
         self.current_second_clicks = 0
@@ -84,7 +86,7 @@ class ActivityMonitor:
         # Initialize platform-specific trackers
         try:
             if platform.system() == "Darwin":
-                from .platform.darwin import MacOSWindowTracker, MacOSInputTracker
+                from .platform.darwin import MacOSInputTracker, MacOSWindowTracker
 
                 self.window_tracker = MacOSWindowTracker()
                 self.input_tracker = MacOSInputTracker(
@@ -157,7 +159,11 @@ class ActivityMonitor:
 
         # Calculate active/idle percentages
         total_seconds = self.session_active_seconds + self.session_idle_seconds
-        active_pct = (self.session_active_seconds / total_seconds * 100) if total_seconds > 0 else 100
+        active_pct = (
+            (self.session_active_seconds / total_seconds * 100)
+            if total_seconds > 0
+            else 100
+        )
 
         # Idle status indicator
         idle_indicator = "💤 IDLE" if self.is_idle else "✓ ACTIVE"
@@ -174,7 +180,7 @@ class ActivityMonitor:
         grid.add_row(
             session_info,
             Text("SELFSPY ACTIVITY MONITOR", style="bold white"),
-            Text(idle_indicator, style=idle_style)
+            Text(idle_indicator, style=idle_style),
         )
 
         return Panel(grid, style="bold blue")
@@ -192,8 +198,12 @@ class ActivityMonitor:
 
         # Calculate rates
         duration = (datetime.now() - self.stats["start_time"]).total_seconds()
-        keys_per_min = int((self.stats["keystrokes"] / duration) * 60) if duration > 0 else 0
-        clicks_per_min = int((self.stats["clicks"] / duration) * 60) if duration > 0 else 0
+        keys_per_min = (
+            int((self.stats["keystrokes"] / duration) * 60) if duration > 0 else 0
+        )
+        clicks_per_min = (
+            int((self.stats["clicks"] / duration) * 60) if duration > 0 else 0
+        )
 
         # Recent activity (last 60 seconds)
         recent_keys = sum(self.keystroke_history) if self.keystroke_history else 0
@@ -203,28 +213,27 @@ class ActivityMonitor:
             "⌨  Keystrokes",
             f"{self.stats['keystrokes']:,}",
             self._create_sparkline(self.keystroke_history, max_val=100),
-            f"{keys_per_min}/min"
+            f"{keys_per_min}/min",
         )
         table.add_row(
             "🖱  Clicks",
             f"{self.stats['clicks']:,}",
             self._create_sparkline(self.click_history, max_val=50),
-            f"{clicks_per_min}/min"
+            f"{clicks_per_min}/min",
         )
         table.add_row(
             "🪟  Windows",
             f"{self.stats['windows']:,}",
             "",
-            f"{len(self.app_usage)} apps"
+            f"{len(self.app_usage)} apps",
         )
         table.add_row(
-            "🔄  Recent Activity",
-            f"{recent_keys + recent_clicks:,}",
-            "",
-            "last 60s"
+            "🔄  Recent Activity", f"{recent_keys + recent_clicks:,}", "", "last 60s"
         )
 
-        return Panel(table, title="[bold]📊 Real-time Metrics[/bold]", border_style="green")
+        return Panel(
+            table, title="[bold]📊 Real-time Metrics[/bold]", border_style="green"
+        )
 
     def _generate_top_apps_panel(self) -> Panel:
         """Generate top applications panel"""
@@ -232,14 +241,14 @@ class ActivityMonitor:
         sorted_apps = sorted(
             self.app_usage.items(),
             key=lambda x: x[1]["keys"] + x[1]["clicks"],
-            reverse=True
+            reverse=True,
         )[:10]
 
         if not sorted_apps:
             return Panel(
                 Align.center("[dim]No application data yet...[/dim]"),
                 title="[bold]🏆 Top Applications[/bold]",
-                border_style="blue"
+                border_style="blue",
             )
 
         table = Table(show_header=True, header_style="bold cyan", box=None)
@@ -268,11 +277,13 @@ class ActivityMonitor:
                 app_name[:20],
                 f"{metrics['keys']:,}",
                 f"{metrics['clicks']:,}",
-                str(metrics['windows']),
-                activity_display
+                str(metrics["windows"]),
+                activity_display,
             )
 
-        return Panel(table, title="[bold]🏆 Top Applications[/bold]", border_style="blue")
+        return Panel(
+            table, title="[bold]🏆 Top Applications[/bold]", border_style="blue"
+        )
 
     def _generate_current_window_panel(self) -> Panel:
         """Generate current window/activity panel"""
@@ -284,7 +295,9 @@ class ActivityMonitor:
             window_title = window.get("title", "Unknown")
 
             # Get current app stats
-            app_stats = self.app_usage.get(app_name, {"keys": 0, "clicks": 0, "windows": 0})
+            app_stats = self.app_usage.get(
+                app_name, {"keys": 0, "clicks": 0, "windows": 0}
+            )
 
             grid = Table.grid(padding=(0, 2))
             grid.add_column(style="cyan")
@@ -300,7 +313,9 @@ class ActivityMonitor:
 
             content = grid
 
-        return Panel(content, title="[bold]🎯 Current Focus[/bold]", border_style="magenta")
+        return Panel(
+            content, title="[bold]🎯 Current Focus[/bold]", border_style="magenta"
+        )
 
     def _generate_productivity_panel(self) -> Panel:
         """Generate productivity insights panel"""
@@ -339,9 +354,13 @@ class ActivityMonitor:
         grid.add_row("Averages:", "")
         if duration > 0:
             grid.add_row("  └ Keys/min:", f"[green]{avg_keys_per_min:.1f}[/green]")
-            grid.add_row("  └ Clicks/min:", f"[yellow]{avg_clicks_per_min:.1f}[/yellow]")
+            grid.add_row(
+                "  └ Clicks/min:", f"[yellow]{avg_clicks_per_min:.1f}[/yellow]"
+            )
 
-        return Panel(grid, title="[bold]💡 Productivity Insights[/bold]", border_style="yellow")
+        return Panel(
+            grid, title="[bold]💡 Productivity Insights[/bold]", border_style="yellow"
+        )
 
     def _generate_comparison_panel(self) -> Panel:
         """Generate comparison with yesterday's data"""
@@ -349,7 +368,7 @@ class ActivityMonitor:
             return Panel(
                 Align.center("[dim]No yesterday data yet[/dim]"),
                 title="[bold]📊 vs Yesterday[/bold]",
-                border_style="cyan"
+                border_style="cyan",
             )
 
         grid = Table.grid(padding=(0, 2))
@@ -359,7 +378,9 @@ class ActivityMonitor:
         # Calculate differences
         key_diff = self.stats["keystrokes"] - self.yesterday_data["keystrokes"]
         click_diff = self.stats["clicks"] - self.yesterday_data["clicks"]
-        active_diff = self.session_active_seconds - self.yesterday_data["active_seconds"]
+        active_diff = (
+            self.session_active_seconds - self.yesterday_data["active_seconds"]
+        )
 
         # Format with arrows and colors
         def format_change(diff, total_yesterday):
@@ -373,24 +394,23 @@ class ActivityMonitor:
             return f"[{color}]{arrow} {abs(pct):.0f}%[/{color}]"
 
         grid.add_row(
-            "⌨  Keystrokes",
-            format_change(key_diff, self.yesterday_data["keystrokes"])
+            "⌨  Keystrokes", format_change(key_diff, self.yesterday_data["keystrokes"])
         )
         grid.add_row(
-            "🖱  Clicks",
-            format_change(click_diff, self.yesterday_data["clicks"])
+            "🖱  Clicks", format_change(click_diff, self.yesterday_data["clicks"])
         )
         grid.add_row(
             "⚡ Active Time",
-            format_change(active_diff, self.yesterday_data["active_seconds"])
+            format_change(active_diff, self.yesterday_data["active_seconds"]),
         )
 
         # Overall verdict
-        overall_change = (
-            (self.stats["keystrokes"] + self.stats["clicks"]) -
-            (self.yesterday_data["keystrokes"] + self.yesterday_data["clicks"])
+        overall_change = (self.stats["keystrokes"] + self.stats["clicks"]) - (
+            self.yesterday_data["keystrokes"] + self.yesterday_data["clicks"]
         )
-        yesterday_total = self.yesterday_data["keystrokes"] + self.yesterday_data["clicks"]
+        yesterday_total = (
+            self.yesterday_data["keystrokes"] + self.yesterday_data["clicks"]
+        )
 
         if yesterday_total > 0:
             pct_change = (overall_change / yesterday_total) * 100
@@ -415,8 +435,10 @@ class ActivityMonitor:
 
         try:
             from datetime import date
-            from sqlalchemy import func, select
-            from .models import Session, Keys, Click
+
+            from sqlalchemy import select
+
+            from .models import Session
 
             yesterday = date.today() - timedelta(days=1)
             yesterday_start = datetime.combine(yesterday, datetime.min.time())
@@ -426,7 +448,7 @@ class ActivityMonitor:
                 # Get all yesterday's sessions
                 sessions_query = select(Session).where(
                     Session.start_time >= yesterday_start,
-                    Session.start_time <= yesterday_end
+                    Session.start_time <= yesterday_end,
                 )
                 result = await session.execute(sessions_query)
                 sessions = result.scalars().all()
@@ -443,7 +465,7 @@ class ActivityMonitor:
                         "clicks": total_clicks,
                         "active_seconds": total_active,
                         "idle_seconds": total_idle,
-                        "session_count": len(sessions)
+                        "session_count": len(sessions),
                     }
                     logger.info(f"Fetched yesterday's data: {len(sessions)} sessions")
 
@@ -460,26 +482,24 @@ class ActivityMonitor:
         layout.split_column(
             Layout(name="header", size=3),
             Layout(name="main", ratio=1),
-            Layout(name="footer", size=1)
+            Layout(name="footer", size=1),
         )
 
         # Split main into left and right
         layout["main"].split_row(
-            Layout(name="left", ratio=2),
-            Layout(name="right", ratio=1)
+            Layout(name="left", ratio=2), Layout(name="right", ratio=1)
         )
 
         # Split left into top and bottom
         layout["left"].split_column(
-            Layout(name="metrics", ratio=1),
-            Layout(name="apps", ratio=2)
+            Layout(name="metrics", ratio=1), Layout(name="apps", ratio=2)
         )
 
         # Split right into three panels
         layout["right"].split_column(
             Layout(name="current", ratio=1),
             Layout(name="productivity", ratio=1),
-            Layout(name="comparison", ratio=1)
+            Layout(name="comparison", ratio=1),
         )
 
         # Populate panels
@@ -515,6 +535,7 @@ class ActivityMonitor:
         if platform.system() == "Darwin":
             try:
                 from ApplicationServices import AXIsProcessTrusted
+
                 if not AXIsProcessTrusted():
                     logger.error("Accessibility permissions missing")
                     raise PermissionError(
@@ -570,7 +591,9 @@ class ActivityMonitor:
             if not self.is_idle and time_since_activity > self.idle_threshold:
                 self.is_idle = True
                 self.idle_start_time = self.last_activity_time + self.idle_threshold
-                logger.info(f"User went idle after {self.idle_threshold.total_seconds()}s of inactivity")
+                logger.info(
+                    f"User went idle after {self.idle_threshold.total_seconds()}s of inactivity"
+                )
 
             # Check if we've resumed activity
             elif self.is_idle and time_since_activity <= self.idle_threshold:
@@ -595,7 +618,7 @@ class ActivityMonitor:
         logger.info("Cleaning up activity monitor...")
 
         # Stop input tracking
-        if hasattr(self, 'input_tracker'):
+        if hasattr(self, "input_tracker"):
             self.input_tracker.stop()
 
         # Flush any remaining buffered data
@@ -607,7 +630,7 @@ class ActivityMonitor:
             await self.store.update_session_metrics(idle_seconds=idle_duration)
 
         # Close database connection (this will end the session)
-        if hasattr(self, 'store'):
+        if hasattr(self, "store"):
             await self.store.close()
 
         logger.info("Activity monitor cleanup complete")
@@ -629,7 +652,9 @@ class ActivityMonitor:
 
             # Use put_nowait for thread-safe queue access from pynput thread
             try:
-                self.buffer.put_nowait({"type": "key", "key": char, "time": datetime.now()})
+                self.buffer.put_nowait(
+                    {"type": "key", "key": char, "time": datetime.now()}
+                )
             except asyncio.QueueFull:
                 logger.warning("Buffer queue full, dropping keystroke event")
             self.last_activity = datetime.now()
@@ -662,13 +687,15 @@ class ActivityMonitor:
 
                 # Buffer click for async storage using thread-safe queue
                 try:
-                    self.buffer.put_nowait({
-                        "type": "click",
-                        "button": button_num,
-                        "x": x,
-                        "y": y,
-                        "time": datetime.now()
-                    })
+                    self.buffer.put_nowait(
+                        {
+                            "type": "click",
+                            "button": button_num,
+                            "x": x,
+                            "y": y,
+                            "time": datetime.now(),
+                        }
+                    )
                 except asyncio.QueueFull:
                     logger.warning("Buffer queue full, dropping click event")
                 self.last_activity = datetime.now()
@@ -681,13 +708,15 @@ class ActivityMonitor:
             button_num = 4 if dy > 0 else 5
             # Buffer scroll event for async storage using thread-safe queue
             try:
-                self.buffer.put_nowait({
-                    "type": "click",
-                    "button": button_num,
-                    "x": x,
-                    "y": y,
-                    "time": datetime.now()
-                })
+                self.buffer.put_nowait(
+                    {
+                        "type": "click",
+                        "button": button_num,
+                        "x": x,
+                        "y": y,
+                        "time": datetime.now(),
+                    }
+                )
             except asyncio.QueueFull:
                 logger.warning("Buffer queue full, dropping scroll event")
             self.last_activity = datetime.now()
@@ -704,9 +733,9 @@ class ActivityMonitor:
 
         # Check if we should flush
         should_flush = (
-            force or
-            time_since_activity > self.settings.keystroke_buffer_timeout or
-            self.buffer.qsize() > 50  # Force flush if buffer gets too large
+            force
+            or time_since_activity > self.settings.keystroke_buffer_timeout
+            or self.buffer.qsize() > 50  # Force flush if buffer gets too large
         )
 
         if should_flush:
@@ -720,7 +749,9 @@ class ActivityMonitor:
 
             # Process keystrokes
             text = "".join(
-                item["key"] for item in items if item.get("type") == "key" and isinstance(item.get("key"), str)
+                item["key"]
+                for item in items
+                if item.get("type") == "key" and isinstance(item.get("key"), str)
             )
             keystroke_count = len(text)
             if text:
@@ -738,7 +769,9 @@ class ActivityMonitor:
                 logger.debug(f"Flushing {len(clicks)} clicks to database")
             for click in clicks:
                 try:
-                    await self.store.store_click(click["button"], click["x"], click["y"])
+                    await self.store.store_click(
+                        click["button"], click["x"], click["y"]
+                    )
                 except Exception as e:
                     logger.error("Error storing click", error=str(e))
 
@@ -765,7 +798,9 @@ class ActivityMonitor:
                 self.app_usage[app_name]["windows"] += 1
 
                 await self.store.update_window_info(
-                    window_info["process"], window_info["title"], window_info.get("bundle", "")
+                    window_info["process"],
+                    window_info["title"],
+                    window_info.get("bundle", ""),
                 )
         except Exception as e:
             logger.error("Window check error", error=str(e))

@@ -3,20 +3,18 @@ Statistics and visualization module for Selfspy
 """
 
 import asyncio
-from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
 import typer
 from rich.align import Align
-from rich.console import Console, Group
+from rich.console import Console
 from rich.layout import Layout
 from rich.panel import Panel
-from rich.progress import BarColumn, Progress, TextColumn
 from rich.table import Table
 from rich.text import Text
-from sqlalchemy import and_, distinct, func, select
+from sqlalchemy import distinct, func, select
 
 from .activity_store import ActivityStore
 from .config import Settings
@@ -69,10 +67,7 @@ async def _get_stats(store: ActivityStore, days: int):
         # Get process stats using subqueries to avoid cartesian product
         # Subquery for keystrokes
         keystroke_subq = (
-            select(
-                Keys.process_id,
-                func.sum(Keys.count).label("keystroke_count")
-            )
+            select(Keys.process_id, func.sum(Keys.count).label("keystroke_count"))
             .where(Keys.created_at >= start_date)
             .group_by(Keys.process_id)
             .subquery()
@@ -80,10 +75,7 @@ async def _get_stats(store: ActivityStore, days: int):
 
         # Subquery for clicks
         click_subq = (
-            select(
-                Click.process_id,
-                func.count(Click.id).label("click_count")
-            )
+            select(Click.process_id, func.count(Click.id).label("click_count"))
             .where(Click.created_at >= start_date)
             .group_by(Click.process_id)
             .subquery()
@@ -94,7 +86,9 @@ async def _get_stats(store: ActivityStore, days: int):
             select(
                 Process.name,
                 func.count(distinct(Window.id)).label("window_count"),
-                func.coalesce(keystroke_subq.c.keystroke_count, 0).label("keystroke_count"),
+                func.coalesce(keystroke_subq.c.keystroke_count, 0).label(
+                    "keystroke_count"
+                ),
                 func.coalesce(click_subq.c.click_count, 0).label("click_count"),
             )
             .select_from(Process)
@@ -102,27 +96,30 @@ async def _get_stats(store: ActivityStore, days: int):
             .outerjoin(keystroke_subq, Process.id == keystroke_subq.c.process_id)
             .outerjoin(click_subq, Process.id == click_subq.c.process_id)
             .where(Window.created_at >= start_date)
-            .group_by(Process.name, keystroke_subq.c.keystroke_count, click_subq.c.click_count)
+            .group_by(
+                Process.name, keystroke_subq.c.keystroke_count, click_subq.c.click_count
+            )
         )
 
         process_stats = await session.execute(process_query)
 
         # Get total counts using separate queries to avoid cartesian product
         keystroke_total = await session.execute(
-            select(func.coalesce(func.sum(Keys.count), 0))
-            .where(Keys.created_at >= start_date)
+            select(func.coalesce(func.sum(Keys.count), 0)).where(
+                Keys.created_at >= start_date
+            )
         )
         total_keystrokes = keystroke_total.scalar()
 
         click_total = await session.execute(
-            select(func.count(Click.id))
-            .where(Click.created_at >= start_date)
+            select(func.count(Click.id)).where(Click.created_at >= start_date)
         )
         total_clicks = click_total.scalar()
 
         window_total = await session.execute(
-            select(func.count(distinct(Window.id)))
-            .where(Window.created_at >= start_date)
+            select(func.count(distinct(Window.id))).where(
+                Window.created_at >= start_date
+            )
         )
         total_windows = window_total.scalar()
 
@@ -130,7 +127,7 @@ async def _get_stats(store: ActivityStore, days: int):
         daily_keys = await session.execute(
             select(
                 func.date(Keys.created_at).label("date"),
-                func.sum(Keys.count).label("count")
+                func.sum(Keys.count).label("count"),
             )
             .where(Keys.created_at >= start_date)
             .group_by(func.date(Keys.created_at))
@@ -140,7 +137,7 @@ async def _get_stats(store: ActivityStore, days: int):
         daily_clicks = await session.execute(
             select(
                 func.date(Click.created_at).label("date"),
-                func.count(Click.id).label("count")
+                func.count(Click.id).label("count"),
             )
             .where(Click.created_at >= start_date)
             .group_by(func.date(Click.created_at))
@@ -149,7 +146,10 @@ async def _get_stats(store: ActivityStore, days: int):
 
         # Create a named tuple for consistency with the rest of the code
         from collections import namedtuple
-        Totals = namedtuple('Totals', ['total_keystrokes', 'total_clicks', 'total_windows'])
+
+        Totals = namedtuple(
+            "Totals", ["total_keystrokes", "total_clicks", "total_windows"]
+        )
         totals = Totals(total_keystrokes, total_clicks, total_windows)
 
         return {
@@ -159,7 +159,7 @@ async def _get_stats(store: ActivityStore, days: int):
             "daily_clicks": {str(row.date): row.count for row in daily_clicks.all()},
             "days": days,
             "start_date": start_date,
-            "end_date": end_date
+            "end_date": end_date,
         }
 
 
@@ -182,29 +182,30 @@ def _create_bar_chart(data: dict, max_width: int = 40) -> str:
 def _display_stats(stats, days):
     """Display rich statistics dashboard"""
     totals = stats["totals"]
-    processes = sorted(stats["processes"], key=lambda x: x.keystroke_count + x.click_count, reverse=True)
+    processes = sorted(
+        stats["processes"],
+        key=lambda x: x.keystroke_count + x.click_count,
+        reverse=True,
+    )
 
     # Create layout
     layout = Layout()
     layout.split_column(
         Layout(name="header", size=3),
         Layout(name="main"),
-        Layout(name="footer", size=1)
+        Layout(name="footer", size=1),
     )
 
     layout["main"].split_row(
-        Layout(name="left", ratio=2),
-        Layout(name="right", ratio=1)
+        Layout(name="left", ratio=2), Layout(name="right", ratio=1)
     )
 
     layout["left"].split_column(
-        Layout(name="overview", ratio=1),
-        Layout(name="apps", ratio=2)
+        Layout(name="overview", ratio=1), Layout(name="apps", ratio=2)
     )
 
     layout["right"].split_column(
-        Layout(name="daily", ratio=1),
-        Layout(name="insights", ratio=1)
+        Layout(name="daily", ratio=1), Layout(name="insights", ratio=1)
     )
 
     # Header
@@ -226,12 +227,24 @@ def _display_stats(stats, days):
     avg_keys_per_day = int(totals.total_keystrokes / days) if days > 0 else 0
     avg_clicks_per_day = int(totals.total_clicks / days) if days > 0 else 0
 
-    overview_table.add_row("⌨  Total Keystrokes", f"{totals.total_keystrokes:,}", f"({avg_keys_per_day:,}/day)")
-    overview_table.add_row("🖱  Total Clicks", f"{totals.total_clicks:,}", f"({avg_clicks_per_day:,}/day)")
-    overview_table.add_row("🪟  Windows Tracked", f"{totals.total_windows:,}", f"({len(processes)} apps)")
-    overview_table.add_row("📊  Total Events", f"{totals.total_keystrokes + totals.total_clicks:,}", "")
+    overview_table.add_row(
+        "⌨  Total Keystrokes",
+        f"{totals.total_keystrokes:,}",
+        f"({avg_keys_per_day:,}/day)",
+    )
+    overview_table.add_row(
+        "🖱  Total Clicks", f"{totals.total_clicks:,}", f"({avg_clicks_per_day:,}/day)"
+    )
+    overview_table.add_row(
+        "🪟  Windows Tracked", f"{totals.total_windows:,}", f"({len(processes)} apps)"
+    )
+    overview_table.add_row(
+        "📊  Total Events", f"{totals.total_keystrokes + totals.total_clicks:,}", ""
+    )
 
-    layout["overview"].update(Panel(overview_table, title="[bold]Overview[/bold]", border_style="green"))
+    layout["overview"].update(
+        Panel(overview_table, title="[bold]Overview[/bold]", border_style="green")
+    )
 
     # Top Applications Panel
     if processes:
@@ -250,7 +263,15 @@ def _display_stats(stats, days):
             percentage = (activity / total_activity * 100) if total_activity > 0 else 0
 
             # Medal for top 3
-            rank = f"🥇" if idx == 1 else f"🥈" if idx == 2 else f"🥉" if idx == 3 else f"{idx:2d}"
+            rank = (
+                "🥇"
+                if idx == 1
+                else "🥈"
+                if idx == 2
+                else "🥉"
+                if idx == 3
+                else f"{idx:2d}"
+            )
 
             # Progress bar - limit to 15 characters max for proper alignment
             max_bar_width = 15
@@ -263,12 +284,24 @@ def _display_stats(stats, days):
                 f"{proc.keystroke_count:,}",
                 f"{proc.click_count:,}",
                 str(proc.window_count),
-                f"{bar} {percentage:.1f}%"
+                f"{bar} {percentage:.1f}%",
             )
 
-        layout["apps"].update(Panel(apps_table, title="[bold]🏆 Top Applications[/bold]", border_style="blue"))
+        layout["apps"].update(
+            Panel(
+                apps_table,
+                title="[bold]🏆 Top Applications[/bold]",
+                border_style="blue",
+            )
+        )
     else:
-        layout["apps"].update(Panel(Align.center("[dim]No application data available[/dim]"), title="[bold]Top Applications[/bold]", border_style="blue"))
+        layout["apps"].update(
+            Panel(
+                Align.center("[dim]No application data available[/dim]"),
+                title="[bold]Top Applications[/bold]",
+                border_style="blue",
+            )
+        )
 
     # Daily Activity Panel
     if stats["daily_keys"] or stats["daily_clicks"]:
@@ -295,9 +328,21 @@ def _display_stats(stats, days):
             daily_text.append(f"{bar} ", style="green")
             daily_text.append(f"{count:,}\n", style="white")
 
-        layout["daily"].update(Panel(daily_text, title="[bold]📅 Recent Activity[/bold]", border_style="yellow"))
+        layout["daily"].update(
+            Panel(
+                daily_text,
+                title="[bold]📅 Recent Activity[/bold]",
+                border_style="yellow",
+            )
+        )
     else:
-        layout["daily"].update(Panel(Align.center("[dim]No daily data available[/dim]"), title="[bold]Daily Activity[/bold]", border_style="yellow"))
+        layout["daily"].update(
+            Panel(
+                Align.center("[dim]No daily data available[/dim]"),
+                title="[bold]Daily Activity[/bold]",
+                border_style="yellow",
+            )
+        )
 
     # Insights Panel
     insights_grid = Table.grid(padding=(0, 1))
@@ -307,7 +352,9 @@ def _display_stats(stats, days):
     if processes:
         # Most used app
         top_app = processes[0]
-        insights_grid.add_row("Most Active:", f"[bold green]{top_app.name}[/bold green]")
+        insights_grid.add_row(
+            "Most Active:", f"[bold green]{top_app.name}[/bold green]"
+        )
 
         # Activity level
         if avg_keys_per_day > 10000:
@@ -330,11 +377,15 @@ def _display_stats(stats, days):
         productivity = min(100, int((avg_keys_per_day / 100)))
         insights_grid.add_row("Productivity:", f"[bold]{productivity}/100[/bold]")
 
-    layout["insights"].update(Panel(insights_grid, title="[bold]💡 Insights[/bold]", border_style="magenta"))
+    layout["insights"].update(
+        Panel(insights_grid, title="[bold]💡 Insights[/bold]", border_style="magenta")
+    )
 
     # Footer
     footer_text = Text()
-    footer_text.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", style="dim")
+    footer_text.append(
+        f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", style="dim"
+    )
     footer_text.append("  •  ", style="dim")
     footer_text.append("Selfspy", style="bold cyan")
     layout["footer"].update(Align.center(footer_text))

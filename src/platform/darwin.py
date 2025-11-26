@@ -39,11 +39,12 @@ class MacOSInputTracker(InputTracker):
             # Start listeners
             self.keyboard_listener.start()
             self.mouse_listener.start()
-            
+
             return True
-            
+
         except Exception as e:
             import structlog
+
             logger = structlog.get_logger()
             logger.error("Failed to start input tracking", error=str(e))
             return False

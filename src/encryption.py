@@ -65,7 +65,8 @@ def _check_rate_limit(data_dir: Path) -> bool:
 
     # Clean up old attempts
     _password_attempts[key] = [
-        attempt_time for attempt_time in _password_attempts[key]
+        attempt_time
+        for attempt_time in _password_attempts[key]
         if current_time - attempt_time < LOCKOUT_DURATION
     ]
 

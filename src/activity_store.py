@@ -7,15 +7,16 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 import structlog
-from alembic import command
-from alembic.config import Config
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.future import select
 from sqlalchemy.orm import sessionmaker
 
+from alembic import command
+from alembic.config import Config
+
 from .config import Settings
 from .encryption import check_password, create_cipher
-from .models import Base, Click, Keys, Process, Window, Session
+from .models import Base, Click, Keys, Process, Session, Window
 
 logger = structlog.get_logger()
 
@@ -59,7 +60,10 @@ class ActivityStore:
 
             # Configure Alembic
             alembic_cfg = Config(str(alembic_cfg_path))
-            alembic_cfg.set_main_option("sqlalchemy.url", str(self.settings.database_path).replace("sqlite:///", "sqlite:///"))
+            alembic_cfg.set_main_option(
+                "sqlalchemy.url",
+                str(self.settings.database_path).replace("sqlite:///", "sqlite:///"),
+            )
 
             # Run migrations to head
             command.upgrade(alembic_cfg, "head")
@@ -121,7 +125,7 @@ class ActivityStore:
                 window = Window(
                     title=window_title,
                     process_id=process.id,
-                    session_id=self.current_session_id
+                    session_id=self.current_session_id,
                 )
 
                 # Add geometry if provided
@@ -221,7 +225,11 @@ class ActivityStore:
         self.current_session_id = None
 
     async def update_session_metrics(
-        self, keystrokes: int = 0, clicks: int = 0, active_seconds: int = 0, idle_seconds: int = 0
+        self,
+        keystrokes: int = 0,
+        clicks: int = 0,
+        active_seconds: int = 0,
+        idle_seconds: int = 0,
     ):
         """Update session metrics"""
         if not self.current_session_id:

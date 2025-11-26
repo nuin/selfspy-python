@@ -2,6 +2,7 @@
 """
 Modern CLI interface for Selfspy using Typer
 """
+
 import asyncio
 import signal
 from pathlib import Path
@@ -14,10 +15,10 @@ from rich.traceback import install
 from .activity_monitor import ActivityMonitor
 from .activity_store import ActivityStore
 from .config import Settings
+from .enhanced_stats import app as enhanced_stats_app
 from .password_dialog import get_password
 from .permissions import check_and_request_permissions
 from .stats import app as stats_app
-from .enhanced_stats import app as enhanced_stats_app
 from .terminal_stats import app as terminal_stats_app
 
 # Initialize Typer app and Rich console
@@ -28,7 +29,9 @@ console = Console()
 install(show_locals=True)
 
 app.add_typer(stats_app, name="stats", help="View activity statistics")
-app.add_typer(enhanced_stats_app, name="viz", help="Enhanced visualizations and analytics")
+app.add_typer(
+    enhanced_stats_app, name="viz", help="Enhanced visualizations and analytics"
+)
 app.add_typer(terminal_stats_app, name="terminal", help="Terminal command analytics")
 
 
@@ -38,7 +41,9 @@ def start(
     password: Optional[str] = typer.Option(None, "--password", "-p", help="Password"),
     no_text: bool = typer.Option(False, "--no-text", help="Don't store text"),
     debug: bool = typer.Option(False, "--debug", help="Enable debug logging"),
-    force: bool = typer.Option(False, "--force", help="Skip permission checks (may fail)"),
+    force: bool = typer.Option(
+        False, "--force", help="Skip permission checks (may fail)"
+    ),
 ):
     """Start monitoring computer activity."""
     try:
@@ -76,7 +81,9 @@ def start(
         try:
             loop.run_until_complete(monitor.start())
         except KeyboardInterrupt:
-            console.print("\n[yellow]Keyboard interrupt received, shutting down gracefully...[/yellow]")
+            console.print(
+                "\n[yellow]Keyboard interrupt received, shutting down gracefully...[/yellow]"
+            )
             loop.run_until_complete(monitor.stop())
 
     except KeyboardInterrupt:
