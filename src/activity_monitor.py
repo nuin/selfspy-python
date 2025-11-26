@@ -722,14 +722,18 @@ class ActivityMonitor:
             text = "".join(
                 item["key"] for item in items if item.get("type") == "key" and isinstance(item.get("key"), str)
             )
+            keystroke_count = len(text)
             if text:
                 try:
                     await self.store.store_keys(text)
+                    # Update session metrics with keystroke count
+                    await self.store.update_session_metrics(keystrokes=keystroke_count)
                 except Exception as e:
                     logger.error("Error storing keystrokes", error=str(e))
 
             # Process clicks
             clicks = [item for item in items if item.get("type") == "click"]
+            click_count = len(clicks)
             if clicks:
                 logger.debug(f"Flushing {len(clicks)} clicks to database")
             for click in clicks:
@@ -737,6 +741,13 @@ class ActivityMonitor:
                     await self.store.store_click(click["button"], click["x"], click["y"])
                 except Exception as e:
                     logger.error("Error storing click", error=str(e))
+
+            # Update session metrics with click count
+            if click_count > 0:
+                try:
+                    await self.store.update_session_metrics(clicks=click_count)
+                except Exception as e:
+                    logger.error("Error updating session click metrics", error=str(e))
 
             self.last_activity = current_time
 
