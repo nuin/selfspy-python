@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 import structlog
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.future import select
 from sqlalchemy.orm import sessionmaker
@@ -179,10 +180,8 @@ class ActivityStore:
         """Encrypt text data"""
         if not self.cipher:
             return text.encode()
-
-        padding = 8 - (len(text) % 8)
-        padded_text = text + "\0" * padding
-        return self.cipher.encrypt(padded_text.encode())
+        # Fernet handles padding internally via PKCS7
+        return self.cipher.encrypt(text.encode())
 
     async def start_session(self, hostname: str = None, platform: str = None) -> int:
         """Start a new monitoring session"""
@@ -231,33 +230,50 @@ class ActivityStore:
         active_seconds: int = 0,
         idle_seconds: int = 0,
     ):
-        """Update session metrics"""
+        """Update session metrics atomically using SQL-level arithmetic"""
         if not self.current_session_id:
+            return
+
+        # Build update values dictionary only for non-zero values
+        updates = {}
+        if keystrokes:
+            updates[Session.total_keystrokes] = Session.total_keystrokes + keystrokes
+        if clicks:
+            updates[Session.total_clicks] = Session.total_clicks + clicks
+        if active_seconds:
+            updates[Session.active_seconds] = Session.active_seconds + active_seconds
+        if idle_seconds:
+            updates[Session.idle_seconds] = Session.idle_seconds + idle_seconds
+
+        if not updates:
             return
 
         async with self.async_session() as session:
             async with session.begin():
-                db_session = await session.get(Session, self.current_session_id)
-                if db_session:
-                    if keystrokes:
-                        db_session.total_keystrokes += keystrokes
-                    if clicks:
-                        db_session.total_clicks += clicks
-                    if active_seconds:
-                        db_session.active_seconds += active_seconds
-                    if idle_seconds:
-                        db_session.idle_seconds += idle_seconds
+                # Use atomic SQL UPDATE to avoid race conditions
+                stmt = (
+                    update(Session)
+                    .where(Session.id == self.current_session_id)
+                    .values(updates)
+                )
+                await session.execute(stmt)
 
     async def update_window_focus_time(self, window_id: int, focus_seconds: int):
-        """Update focus time for a window"""
+        """Update focus time for a window atomically"""
         from datetime import datetime
 
         async with self.async_session() as session:
             async with session.begin():
-                window = await session.get(Window, window_id)
-                if window:
-                    window.focus_seconds += focus_seconds
-                    window.last_activity_at = datetime.now()
+                # Use atomic SQL UPDATE to avoid race conditions
+                stmt = (
+                    update(Window)
+                    .where(Window.id == window_id)
+                    .values(
+                        focus_seconds=Window.focus_seconds + focus_seconds,
+                        last_activity_at=datetime.now(),
+                    )
+                )
+                await session.execute(stmt)
 
     async def close(self):
         """Clean up database connection"""

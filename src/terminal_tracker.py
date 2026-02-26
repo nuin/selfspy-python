@@ -12,13 +12,14 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import structlog
+from cryptography.fernet import Fernet
 from sqlalchemy import (
     Boolean,
     Column,
     ForeignKey,
     Integer,
+    LargeBinary,
     String,
-    Text,
     select,
 )
 from sqlalchemy.orm import relationship
@@ -58,7 +59,7 @@ class TerminalCommand(TimestampMixin, Base):
     id = Column(Integer, primary_key=True)
     session_id = Column(Integer, ForeignKey("terminal_session.id"), index=True)
 
-    command = Column(Text)  # The actual command
+    command = Column(LargeBinary)  # Encrypted command data
     command_hash = Column(String(64), index=True)  # Hash for deduplication
     working_directory = Column(String(500), index=True)
 
@@ -79,7 +80,21 @@ class TerminalCommand(TimestampMixin, Base):
 
     def __repr__(self) -> str:
         status = "✓" if self.exit_code == 0 else "✗"
-        return f"<TerminalCommand {status} {self.command[:50]}...>"
+        cmd_preview = self.command[:50] if isinstance(self.command, str) else "[encrypted]"
+        return f"<TerminalCommand {status} {cmd_preview}...>"
+
+    def decrypt_command(self, cipher: Optional[Fernet] = None) -> str:
+        """Decrypt stored command"""
+        if cipher:
+            try:
+                decrypted = cipher.decrypt(self.command)
+                return decrypted.decode("utf-8")
+            except Exception:
+                return ""
+        # If no cipher, assume plaintext (for backwards compatibility)
+        if isinstance(self.command, bytes):
+            return self.command.decode("utf-8")
+        return str(self.command) if self.command else ""
 
 
 class TerminalTracker:
@@ -87,6 +102,7 @@ class TerminalTracker:
 
     def __init__(self, store: ActivityStore):
         self.store = store
+        self.cipher = store.cipher  # Use same cipher as main store
         self.current_session: Optional[Dict[str, Any]] = None
         self.shell_history_files = {
             "bash": [".bash_history"],
@@ -94,6 +110,12 @@ class TerminalTracker:
             "fish": [".config/fish/fish_history"],
         }
         self.last_command_count = {}
+
+    def _encrypt_command(self, command: str) -> bytes:
+        """Encrypt command data"""
+        if not self.cipher:
+            return command.encode("utf-8")
+        return self.cipher.encrypt(command.encode("utf-8"))
 
     async def start_tracking(self):
         """Start tracking terminal sessions"""
@@ -124,9 +146,9 @@ class TerminalTracker:
             # Get terminal app (macOS specific)
             terminal_app = os.environ.get("TERM_PROGRAM", "unknown")
 
-            # Generate session ID based on terminal PID and start time
+            # Generate session ID based on terminal PID and working directory
             pid = os.getppid()  # Parent process (terminal)
-            session_id = hashlib.md5(f"{pid}_{cwd}".encode()).hexdigest()
+            session_id = hashlib.sha256(f"{pid}_{cwd}".encode()).hexdigest()[:64]
 
             # Get git branch if in git repo
             git_branch = self._get_git_branch(cwd)
@@ -266,7 +288,7 @@ class TerminalTracker:
         return {
             "command_type": command_type,
             "is_dangerous": is_dangerous,
-            "command_hash": hashlib.md5(command.encode()).hexdigest(),
+            "command_hash": hashlib.sha256(command.encode()).hexdigest()[:64],
         }
 
     async def _check_for_new_commands(self):
@@ -356,10 +378,14 @@ class TerminalTracker:
         """Store a command in the database"""
         async with self.store.async_session() as session:
             async with session.begin():
-                # Get or create terminal session
-                terminal_session = await session.get(
-                    TerminalSession, session_info["session_id"]
+                # Get or create terminal session using proper query
+                # (session.get() expects PK, but session_id is a string hash)
+                result = await session.execute(
+                    select(TerminalSession).where(
+                        TerminalSession.session_id == session_info["session_id"]
+                    )
                 )
+                terminal_session = result.scalar_one_or_none()
                 if not terminal_session:
                     terminal_session = TerminalSession(
                         session_id=session_info["session_id"],
@@ -381,10 +407,11 @@ class TerminalTracker:
                 if existing_command.first():
                     return  # Command already tracked
 
-                # Create new command record
+                # Create new command record with encrypted command
+                encrypted_command = self._encrypt_command(command)
                 terminal_command = TerminalCommand(
                     session_id=terminal_session.id,
-                    command=command,
+                    command=encrypted_command,
                     command_hash=command_info["command_hash"],
                     working_directory=session_info["working_directory"],
                     command_type=command_info["command_type"],

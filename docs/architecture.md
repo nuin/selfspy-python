@@ -126,8 +126,7 @@ async with self.async_session() as session:
 ```
 platform/
 ├── base.py              # Abstract base classes
-├── darwin.py            # macOS window tracking
-├── darwin_input.py      # macOS input monitoring
+├── darwin.py            # macOS window and input tracking
 ├── fallback.py          # Cross-platform fallback
 ├── input_tracker.py     # Generic input tracker
 └── screen_capture.py    # Screenshot functionality

@@ -6,7 +6,6 @@ Modern CLI interface for Selfspy using Typer
 import asyncio
 import signal
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -38,7 +37,6 @@ app.add_typer(terminal_stats_app, name="terminal", help="Terminal command analyt
 @app.command()
 def start(
     data_dir: Path = typer.Option(None, "--data-dir", "-d", help="Data directory"),
-    password: Optional[str] = typer.Option(None, "--password", "-p", help="Password"),
     no_text: bool = typer.Option(False, "--no-text", help="Don't store text"),
     debug: bool = typer.Option(False, "--debug", help="Enable debug logging"),
     force: bool = typer.Option(
@@ -58,7 +56,9 @@ def start(
             debug=debug,
         )
 
-        if settings.encryption_enabled and not password:
+        # Always use secure password dialog (never accept password via CLI args)
+        password = None
+        if settings.encryption_enabled:
             password = get_password()
 
         store = ActivityStore(settings, password)

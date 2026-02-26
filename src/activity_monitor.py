@@ -34,13 +34,14 @@ class ActivityMonitor:
         self.settings = settings
         self.store = store
         self.current_window: Optional[Dict[str, str]] = None
-        # Use asyncio Queue for thread-safe buffer
+        # Use asyncio Queue for buffering events
         self.buffer: Queue = Queue(
             maxsize=1000
         )  # Limit queue size to prevent memory issues
         self.last_activity = datetime.now()
         self.running = False
         self._shutdown_event = asyncio.Event()
+        self._loop: Optional[asyncio.AbstractEventLoop] = None  # Set when start() is called
 
         # Initialize stats
         self.stats = {
@@ -82,6 +83,24 @@ class ActivityMonitor:
 
         # Initialize terminal tracker
         self.terminal_tracker = TerminalTracker(store)
+
+    def _threadsafe_buffer_put(self, item: Dict[str, Any]) -> None:
+        """Thread-safe method to put items on the buffer queue from pynput threads"""
+        if self._loop is None:
+            return
+        try:
+            # Use call_soon_threadsafe to safely schedule the put from another thread
+            self._loop.call_soon_threadsafe(self._buffer_put_nowait, item)
+        except RuntimeError:
+            # Loop may be closed during shutdown
+            pass
+
+    def _buffer_put_nowait(self, item: Dict[str, Any]) -> None:
+        """Helper called on the event loop thread to actually put the item"""
+        try:
+            self.buffer.put_nowait(item)
+        except asyncio.QueueFull:
+            logger.warning("Buffer queue full, dropping event")
 
         # Initialize platform-specific trackers
         try:
@@ -524,6 +543,9 @@ class ActivityMonitor:
         """Start monitoring asynchronously"""
         logger.info("Starting activity monitor...")
 
+        # Store reference to event loop for thread-safe queue access
+        self._loop = asyncio.get_running_loop()
+
         # Initialize the activity store
         await self.store.initialize()
         logger.info("Activity store initialized")
@@ -650,13 +672,10 @@ class ActivityMonitor:
                 app_name = self.stats["last_window"].get("process", "Unknown")
                 self.app_usage[app_name]["keys"] += 1
 
-            # Use put_nowait for thread-safe queue access from pynput thread
-            try:
-                self.buffer.put_nowait(
-                    {"type": "key", "key": char, "time": datetime.now()}
-                )
-            except asyncio.QueueFull:
-                logger.warning("Buffer queue full, dropping keystroke event")
+            # Use thread-safe method to put on queue from pynput thread
+            self._threadsafe_buffer_put(
+                {"type": "key", "key": char, "time": datetime.now()}
+            )
             self.last_activity = datetime.now()
         except Exception as e:
             logger.error("Key press error", error=str(e))
@@ -685,30 +704,8 @@ class ActivityMonitor:
                     app_name = self.stats["last_window"].get("process", "Unknown")
                     self.app_usage[app_name]["clicks"] += 1
 
-                # Buffer click for async storage using thread-safe queue
-                try:
-                    self.buffer.put_nowait(
-                        {
-                            "type": "click",
-                            "button": button_num,
-                            "x": x,
-                            "y": y,
-                            "time": datetime.now(),
-                        }
-                    )
-                except asyncio.QueueFull:
-                    logger.warning("Buffer queue full, dropping click event")
-                self.last_activity = datetime.now()
-        except Exception as e:
-            logger.error("Mouse click error", error=str(e))
-
-    def _on_scroll(self, x: int, y: int, dx: int, dy: int):
-        """Handle scroll events"""
-        try:
-            button_num = 4 if dy > 0 else 5
-            # Buffer scroll event for async storage using thread-safe queue
-            try:
-                self.buffer.put_nowait(
+                # Use thread-safe method to put on queue from pynput thread
+                self._threadsafe_buffer_put(
                     {
                         "type": "click",
                         "button": button_num,
@@ -717,8 +714,24 @@ class ActivityMonitor:
                         "time": datetime.now(),
                     }
                 )
-            except asyncio.QueueFull:
-                logger.warning("Buffer queue full, dropping scroll event")
+                self.last_activity = datetime.now()
+        except Exception as e:
+            logger.error("Mouse click error", error=str(e))
+
+    def _on_scroll(self, x: int, y: int, dx: int, dy: int):
+        """Handle scroll events"""
+        try:
+            button_num = 4 if dy > 0 else 5
+            # Use thread-safe method to put on queue from pynput thread
+            self._threadsafe_buffer_put(
+                {
+                    "type": "click",
+                    "button": button_num,
+                    "x": x,
+                    "y": y,
+                    "time": datetime.now(),
+                }
+            )
             self.last_activity = datetime.now()
         except Exception as e:
             logger.error("Scroll error", error=str(e))

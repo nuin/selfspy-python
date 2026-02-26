@@ -3,11 +3,12 @@ Encryption utilities for Selfspy
 """
 
 import base64
+import json
 import os
 import time
 from collections import defaultdict
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
@@ -16,9 +17,55 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 MAGIC_STRING = b"selfspy-v2-verification-token"
 
 # Rate limiting for password verification
-_password_attempts = defaultdict(list)
+_password_attempts: dict[str, List[float]] = defaultdict(list)
 MAX_ATTEMPTS = 5
 LOCKOUT_DURATION = 300  # 5 minutes in seconds
+
+
+def _get_rate_limit_path(data_dir: Path) -> Path:
+    """Get path to rate limit file"""
+    return data_dir / ".rate_limit.json"
+
+
+def _load_rate_limit(data_dir: Path) -> List[float]:
+    """Load rate limit attempts from persistent storage"""
+    path = _get_rate_limit_path(data_dir)
+    current_time = time.time()
+
+    if not path.exists():
+        return []
+
+    try:
+        with open(path, "r") as f:
+            data = json.load(f)
+        # Filter out old attempts while loading
+        attempts = [
+            ts for ts in data.get("attempts", [])
+            if current_time - ts < LOCKOUT_DURATION
+        ]
+        return attempts
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+def _save_rate_limit(data_dir: Path, attempts: List[float]) -> None:
+    """Save rate limit attempts to persistent storage"""
+    path = _get_rate_limit_path(data_dir)
+    current_time = time.time()
+
+    # Only save recent attempts
+    recent_attempts = [
+        ts for ts in attempts
+        if current_time - ts < LOCKOUT_DURATION
+    ]
+
+    try:
+        data_dir.mkdir(parents=True, exist_ok=True)
+        with open(path, "w") as f:
+            json.dump({"attempts": recent_attempts}, f)
+        path.chmod(0o600)  # Secure permissions
+    except OSError:
+        pass  # Best effort - don't fail if we can't save
 
 
 def _get_or_create_salt(data_dir: Path) -> bytes:
@@ -59,20 +106,30 @@ def create_cipher(password: Optional[str], data_dir: Path) -> Optional[Fernet]:
 
 
 def _check_rate_limit(data_dir: Path) -> bool:
-    """Check if password verification is rate limited"""
+    """Check if password verification is rate limited (persistent)"""
     current_time = time.time()
     key = str(data_dir)
 
+    # Load from persistent storage and merge with in-memory cache
+    persisted = _load_rate_limit(data_dir)
+    in_memory = _password_attempts.get(key, [])
+
+    # Merge and dedupe attempts
+    all_attempts = list(set(persisted + in_memory))
+
     # Clean up old attempts
-    _password_attempts[key] = [
+    recent_attempts = [
         attempt_time
-        for attempt_time in _password_attempts[key]
+        for attempt_time in all_attempts
         if current_time - attempt_time < LOCKOUT_DURATION
     ]
 
+    # Update in-memory cache
+    _password_attempts[key] = recent_attempts
+
     # Check if locked out
-    if len(_password_attempts[key]) >= MAX_ATTEMPTS:
-        oldest_attempt = min(_password_attempts[key])
+    if len(recent_attempts) >= MAX_ATTEMPTS:
+        oldest_attempt = min(recent_attempts)
         time_remaining = LOCKOUT_DURATION - (current_time - oldest_attempt)
         if time_remaining > 0:
             raise PermissionError(
@@ -83,8 +140,15 @@ def _check_rate_limit(data_dir: Path) -> bool:
 
 
 def _record_password_attempt(data_dir: Path) -> None:
-    """Record a password verification attempt"""
-    _password_attempts[str(data_dir)].append(time.time())
+    """Record a password verification attempt (persistent)"""
+    key = str(data_dir)
+    current_time = time.time()
+
+    # Add to in-memory cache
+    _password_attempts[key].append(current_time)
+
+    # Persist to disk
+    _save_rate_limit(data_dir, _password_attempts[key])
 
 
 async def check_password(

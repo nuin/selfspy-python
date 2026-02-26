@@ -78,14 +78,14 @@ mypy src/
 
 3. **Platform Abstraction** (`src/platform/`):
    - `base.py`: Abstract base classes for window/input tracking
-   - `darwin.py`: macOS-specific window tracking using PyObjC
-   - `darwin_input.py`: macOS input monitoring with Quartz event taps
+   - `darwin.py`: macOS-specific window and input tracking using PyObjC
    - `fallback.py`: Cross-platform fallback using pynput
    - Platform detection happens at runtime in ActivityMonitor
 
 4. **Data Models** (`src/models.py`): SQLAlchemy 2.0 models using modern mapped_column syntax:
+   - `Session`: Monitoring sessions with start/end times, aggregate metrics (keystrokes, clicks, active/idle seconds)
    - `Process`: Application processes with bundle IDs
-   - `Window`: Window information with geometry and screen data
+   - `Window`: Window information with geometry, screen data, and focus time tracking
    - `Keys`: Encrypted keystroke data
    - `Click`: Mouse clicks with movement tracking
 
@@ -114,10 +114,18 @@ All CLI apps are defined in `[project.scripts]` in `pyproject.toml`.
 
 ## Key Technical Details
 
+### Event Flow and Threading
+- Input events arrive from pynput callbacks on a separate thread
+- Events are added to an `asyncio.Queue` using `put_nowait()` (thread-safe, non-blocking)
+- The main async loop periodically flushes the queue to the database
+- Buffer flush triggers: timeout (1 second), buffer size >50, or explicit flush
+- This pattern prevents blocking the pynput thread while ensuring async database writes
+
 ### Async Patterns
 - ActivityStore uses `AsyncSession` for non-blocking database operations
 - ActivityMonitor runs in an asyncio event loop
 - Platform trackers use callback-based APIs wrapped for async compatibility
+- Alembic migrations run via `asyncio.to_thread()` with fallback to `Base.metadata.create_all`
 
 ### macOS Integration
 - Requires Accessibility permissions (checked via `AXIsProcessTrusted()`)
@@ -128,8 +136,15 @@ All CLI apps are defined in `[project.scripts]` in `pyproject.toml`.
 ### Database Schema
 - SQLite database stored in user's data directory (default: `~/.selfspy/`)
 - Comprehensive indexes for common queries (process name, window title, click coordinates, timestamps)
-- Foreign key relationships: Process → Window → Keys/Clicks
+- Foreign key relationships: Session ← Window, Process → Window → Keys/Clicks
 - TimestampMixin provides `created_at`/`updated_at` on all models
+- Alembic migrations in `alembic/` directory; falls back to `create_all` if unavailable
+
+### Session and Idle Tracking
+- Sessions track aggregate metrics: total_keystrokes, total_clicks, active_seconds, idle_seconds
+- Idle detection threshold: 3 minutes without input activity
+- Session metrics update in real-time via `update_session_metrics()` in ActivityStore
+- Windows can track focus_seconds for time spent with activity in each window
 
 ### Configuration
 - `src/config.py` uses pydantic-settings for configuration management
@@ -138,9 +153,22 @@ All CLI apps are defined in `[project.scripts]` in `pyproject.toml`.
 
 ## Testing
 
-Tests use pytest with async support (`pytest-asyncio`). Test database is created in-memory or temp directory. Mock PyObjC dependencies when running on non-macOS platforms.
+Tests use pytest with async support (`pytest-asyncio`). Test database is created in temp directory.
 
-Key test file: `tests/test_models.py` - model relationships and database operations.
+```bash
+# Run single test
+pytest tests/test_models.py::test_function_name -v
+
+# Run with specific marker
+pytest -m "not slow"
+```
+
+Key fixtures in `tests/conftest.py`:
+- `db_session`: Sync SQLAlchemy session with automatic schema create/drop
+- `activity_store`: Async ActivityStore instance with test password
+- `temp_dir`: Session-scoped temporary directory
+
+Mock PyObjC dependencies when running on non-macOS platforms.
 
 ## Platform Support
 
