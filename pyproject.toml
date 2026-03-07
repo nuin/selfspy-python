@@ -54,6 +54,7 @@ dependencies = [
     "greenlet>=3.0.1",
     "aiofiles>=23.2.0",
     "pycryptodome>=3.19.0",
+    "textual>=0.50.0",
 ]
 
 [project.optional-dependencies]
