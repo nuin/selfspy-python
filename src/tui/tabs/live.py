@@ -7,9 +7,8 @@ recent activity patterns, current window focus, and session status.
 
 from typing import List
 
-from rich.text import Text
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, Vertical
+from textual.containers import Container, Horizontal
 from textual.reactive import reactive
 from textual.widgets import Label, Static
 

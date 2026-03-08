@@ -9,7 +9,6 @@ from typing import List
 
 from rich.text import Text
 from textual.widget import Widget
-from textual.reactive import reactive
 
 
 # Unicode block characters for 8 levels (0-7)
@@ -29,8 +28,6 @@ class Sparkline(Widget):
         width: auto;
     }
     """
-
-    data: reactive[List[float]] = reactive(list, init=False)
 
     def __init__(
         self,

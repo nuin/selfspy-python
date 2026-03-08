@@ -6,7 +6,7 @@ comparison with yesterday's activity.
 """
 
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal
+from textual.containers import Horizontal
 from textual.reactive import reactive
 from textual.widgets import Label, Static
 

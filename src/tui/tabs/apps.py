@@ -10,7 +10,6 @@ from typing import List
 
 from rich.text import Text
 from textual.app import ComposeResult
-from textual.reactive import reactive
 from textual.widgets import DataTable, Static
 
 
@@ -40,8 +39,6 @@ class AppsTab(Static):
         height: 100%;
     }
     """
-
-    apps: reactive[List[AppData]] = reactive(list, init=False)
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
