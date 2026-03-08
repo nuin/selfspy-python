@@ -7,5 +7,14 @@ A tabbed interface for real-time activity monitoring with three focused views:
 - Summary: Session statistics and comparisons
 """
 
-# Components will be exported after creation
-__all__: list[str] = []
+from .app import SelfspyApp
+from .tabs import AppsTab, LiveTab, SummaryTab
+from .widgets import Sparkline
+
+__all__ = [
+    "SelfspyApp",
+    "LiveTab",
+    "AppsTab",
+    "SummaryTab",
+    "Sparkline",
+]

@@ -7,5 +7,8 @@ Each tab provides a focused view of activity data:
 - SummaryTab: Session statistics
 """
 
-# Components will be exported after creation
-__all__: list[str] = []
+from .apps import AppData, AppsTab
+from .live import LiveTab
+from .summary import SummaryTab
+
+__all__ = ["LiveTab", "AppsTab", "SummaryTab", "AppData"]
