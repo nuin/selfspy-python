@@ -78,6 +78,9 @@ class ActivityMonitor:
         # Initialize terminal tracker
         self.terminal_tracker = TerminalTracker(store)
 
+        # Initialize platform-specific trackers
+        self._init_platform_trackers()
+
     def _threadsafe_buffer_put(self, item: Dict[str, Any]) -> None:
         """Thread-safe method to put items on the buffer queue from pynput threads"""
         if self._loop is None:
@@ -96,7 +99,8 @@ class ActivityMonitor:
         except asyncio.QueueFull:
             logger.warning("Buffer queue full, dropping event")
 
-        # Initialize platform-specific trackers
+    def _init_platform_trackers(self) -> None:
+        """Initialize platform-specific trackers"""
         try:
             if platform.system() == "Darwin":
                 from .platform.darwin import MacOSInputTracker, MacOSWindowTracker
