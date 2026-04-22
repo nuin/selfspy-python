@@ -91,6 +91,14 @@ mypy src/
 
 5. **Encryption** (`src/encryption.py`): Optional AES encryption for keystroke data using cryptography library and keyring for password storage.
 
+6. **TUI** (`src/tui/`): Textual-based terminal user interface integrated into ActivityMonitor. The `SelfspyApp` provides a tabbed interface (Live, Apps, Summary) for real-time monitoring feedback.
+   - `app.py`: `SelfspyApp` main tabbed application
+   - `tabs/live.py`: Real-time keystroke/click feedback with sparklines
+   - `tabs/apps.py`: Application activity breakdown (uses `AppData` dataclass)
+   - `tabs/summary.py`: Session statistics and comparisons
+   - `widgets/sparkline.py`: Reusable sparkline widget
+   - ActivityMonitor.start() accepts `use_tui` flag; `_run_with_tui()` launches the Textual app and pushes updates via an async update task
+
 ### Desktop Widgets (`desktop-app/`)
 
 Python/PyObjC implementations for macOS desktop widgets:
