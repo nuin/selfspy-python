@@ -134,5 +134,25 @@ indent-style = "space"
 
 [tool.mypy]
 python_version = "3.12"
+strict = true
+warn_unused_ignores = true
+warn_redundant_casts = true
 ignore_missing_imports = true
-check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "ApplicationServices.*",
+    "Foundation.*",
+    "AppKit.*",
+    "Quartz.*",
+    "AVFoundation.*",
+    "objc.*",
+    "pynput.*",
+    "Crypto.*",
+]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
