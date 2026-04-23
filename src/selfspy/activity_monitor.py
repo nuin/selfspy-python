@@ -375,85 +375,10 @@ class ActivityMonitor:
             await self._cleanup()
 
     async def _run_with_tui(self):
-        """Run with the Textual TUI."""
-        from .tui.app import SelfspyApp
-        from .tui.tabs.apps import AppData
+        """Run with the Textual TUI (delegates to tui.runner)."""
+        from .tui.runner import run_tui
 
-        app = SelfspyApp()
-
-        # Create a task to update the TUI periodically
-        async def update_tui():
-            while self.running and not self._shutdown_event.is_set():
-                try:
-                    await self._check_active_window()
-                    await self._flush_buffer()
-                    self._update_metrics()
-
-                    # Get current state and update TUI
-                    state = self.get_current_state()
-
-                    # Update live tab
-                    app.update_live_metrics(
-                        keystrokes=state["keystrokes"],
-                        clicks=state["clicks"],
-                        keys_per_min=state["keys_per_min"],
-                        clicks_per_min=state["clicks_per_min"],
-                        current_window=state["current_window"],
-                        status=state["status"],
-                        session_duration=state["session_duration"],
-                    )
-
-                    # Add sparkline samples
-                    if state["keystroke_history"]:
-                        app.add_activity_samples(
-                            state["keystroke_history"][-1]
-                            if state["keystroke_history"]
-                            else 0,
-                            state["click_history"][-1] if state["click_history"] else 0,
-                        )
-
-                    # Update apps tab
-                    apps = [
-                        AppData(
-                            name=a["name"],
-                            keystrokes=a["keystrokes"],
-                            clicks=a["clicks"],
-                            activity_percent=a["activity_percent"],
-                        )
-                        for a in state["apps"]
-                    ]
-                    app.update_apps(apps)
-
-                    # Update summary tab
-                    app.update_summary(
-                        session_duration=state["session_duration"],
-                        active_time=state["active_time"],
-                        active_percent=state["active_percent"],
-                        idle_time=state["idle_time"],
-                        idle_percent=state["idle_percent"],
-                        total_keystrokes=state["keystrokes"],
-                        total_clicks=state["clicks"],
-                        windows_switched=state["windows_switched"],
-                        yesterday_diff=state["yesterday_diff"],
-                        more_active=state["more_active"],
-                    )
-
-                    await asyncio.sleep(1)
-                except Exception as e:
-                    logger.error("TUI update error", error=str(e))
-                    await asyncio.sleep(1)
-
-        # Run the TUI app with background updates
-        update_task = asyncio.create_task(update_tui())
-        try:
-            await app.run_async()
-        finally:
-            self.running = False
-            update_task.cancel()
-            try:
-                await update_task
-            except asyncio.CancelledError:
-                pass
+        await run_tui(self)
 
     async def _run_headless(self):
         """Run without any display (headless mode)."""
