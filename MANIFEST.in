@@ -1,9 +1,0 @@
-include README.md
-include INSTALL.md
-include CREDITS.md
-include LICENSE
-include CLAUDE.md
-include PUBLISHING.md
-include alembic.ini
-recursive-include alembic *.py *.mako
-recursive-include docs *.md

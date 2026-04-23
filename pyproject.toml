@@ -106,7 +106,9 @@ packages = ["src"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+python_files = ["test_*.py"]
 addopts = "-ra -q --cov=src"
+asyncio_mode = "auto"
 
 [tool.black]
 line-length = 88
