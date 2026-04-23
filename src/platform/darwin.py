@@ -2,7 +2,6 @@
 macOS-specific window and process monitoring using PyObjC
 """
 
-from typing import Dict, Optional, Tuple
 
 import AppKit
 import Quartz
@@ -68,7 +67,7 @@ class MacOSWindowTracker:
         """Cleanup resources"""
         pass
 
-    async def get_active_window(self) -> Optional[Dict[str, str]]:
+    async def get_active_window(self) -> dict[str, str] | None:
         """Get active window information"""
         try:
             workspace = Quartz.NSWorkspace.sharedWorkspace()
@@ -83,7 +82,7 @@ class MacOSWindowTracker:
             pass
         return None
 
-    def get_window_geometry(self) -> Tuple[int, int, int, int]:
+    def get_window_geometry(self) -> tuple[int, int, int, int]:
         """Get current window geometry"""
         try:
             # Get frontmost app info
@@ -140,7 +139,7 @@ class MacOSWindowTracker:
             pass
         return "unknown"
 
-    def _get_window_frame(self) -> Optional[AppKit.NSRect]:
+    def _get_window_frame(self) -> AppKit.NSRect | None:
         """Get frame of active window"""
         try:
             windows = Quartz.CGWindowListCopyWindowInfo(

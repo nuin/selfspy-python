@@ -8,7 +8,7 @@ import platform
 from asyncio import Queue
 from collections import defaultdict, deque
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import structlog
 from pynput import mouse
@@ -27,7 +27,7 @@ class ActivityMonitor:
     def __init__(self, settings: Settings, store: "ActivityStore", debug: bool = False):
         self.settings = settings
         self.store = store
-        self.current_window: Optional[Dict[str, str]] = None
+        self.current_window: dict[str, str] | None = None
         # Use asyncio Queue for buffering events
         self.buffer: Queue = Queue(
             maxsize=1000
@@ -35,7 +35,9 @@ class ActivityMonitor:
         self.last_activity = datetime.now()
         self.running = False
         self._shutdown_event = asyncio.Event()
-        self._loop: Optional[asyncio.AbstractEventLoop] = None  # Set when start() is called
+        self._loop: asyncio.AbstractEventLoop | None = (
+            None  # Set when start() is called
+        )
 
         # Initialize stats
         self.stats = {
@@ -61,12 +63,12 @@ class ActivityMonitor:
         self.idle_threshold = timedelta(minutes=3)
         self.last_activity_time = datetime.now()
         self.is_idle = False
-        self.idle_start_time: Optional[datetime] = None
+        self.idle_start_time: datetime | None = None
         self.session_active_seconds = 0
         self.session_idle_seconds = 0
 
         # Historical comparison data
-        self.yesterday_data: Optional[Dict[str, Any]] = None
+        self.yesterday_data: dict[str, Any] | None = None
         self.yesterday_fetched = False
 
         # Configure logging
@@ -81,7 +83,7 @@ class ActivityMonitor:
         # Initialize platform-specific trackers
         self._init_platform_trackers()
 
-    def _threadsafe_buffer_put(self, item: Dict[str, Any]) -> None:
+    def _threadsafe_buffer_put(self, item: dict[str, Any]) -> None:
         """Thread-safe method to put items on the buffer queue from pynput threads"""
         if self._loop is None:
             return
@@ -92,7 +94,7 @@ class ActivityMonitor:
             # Loop may be closed during shutdown
             pass
 
-    def _buffer_put_nowait(self, item: Dict[str, Any]) -> None:
+    def _buffer_put_nowait(self, item: dict[str, Any]) -> None:
         """Helper called on the event loop thread to actually put the item"""
         try:
             self.buffer.put_nowait(item)
@@ -128,7 +130,7 @@ class ActivityMonitor:
                     f"Platform {platform.system()} has limited tracking support"
                 )
         except Exception as e:
-            logger.warning(f"Using fallback trackers: {str(e)}")
+            logger.warning(f"Using fallback trackers: {e!s}")
             from .platform.fallback import FallbackWindowTracker
 
             self.window_tracker = FallbackWindowTracker()
@@ -150,7 +152,7 @@ class ActivityMonitor:
             self.current_second_clicks = 0
             self.last_metric_time = now
 
-    def get_current_state(self) -> Dict[str, Any]:
+    def get_current_state(self) -> dict[str, Any]:
         """Get current monitoring state for TUI display.
 
         Returns a dictionary with all the data the TUI needs to display.
@@ -169,9 +171,7 @@ class ActivityMonitor:
             else 0
         )
         clicks_per_min = (
-            int((self.stats["clicks"] / duration_secs) * 60)
-            if duration_secs > 0
-            else 0
+            int((self.stats["clicks"] / duration_secs) * 60) if duration_secs > 0 else 0
         )
 
         # Calculate active/idle percentages
@@ -240,7 +240,7 @@ class ActivityMonitor:
             "apps": apps_data,
         }
 
-    def get_apps_data(self) -> List[Dict[str, Any]]:
+    def get_apps_data(self) -> list[dict[str, Any]]:
         """Get application activity data for Apps tab.
 
         Returns list of app data sorted by activity.
@@ -262,12 +262,14 @@ class ActivityMonitor:
         for app_name, metrics in sorted_apps[:20]:  # Top 20 apps
             activity = metrics["keys"] + metrics["clicks"]
             percentage = (activity / total_activity * 100) if total_activity > 0 else 0
-            apps_data.append({
-                "name": app_name,
-                "keystrokes": metrics["keys"],
-                "clicks": metrics["clicks"],
-                "activity_percent": percentage,
-            })
+            apps_data.append(
+                {
+                    "name": app_name,
+                    "keystrokes": metrics["keys"],
+                    "clicks": metrics["clicks"],
+                    "activity_percent": percentage,
+                }
+            )
 
         return apps_data
 
@@ -404,7 +406,9 @@ class ActivityMonitor:
                     # Add sparkline samples
                     if state["keystroke_history"]:
                         app.add_activity_samples(
-                            state["keystroke_history"][-1] if state["keystroke_history"] else 0,
+                            state["keystroke_history"][-1]
+                            if state["keystroke_history"]
+                            else 0,
                             state["click_history"][-1] if state["click_history"] else 0,
                         )
 

@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import List
 
 from pydantic import BaseModel
 
@@ -25,5 +24,5 @@ class StatsResponse(BaseModel):
     total_keystrokes: int
     total_clicks: int
     total_windows: int
-    hourly_stats: List[ActivityStats]
-    process_stats: List[ProcessStats]
+    hourly_stats: list[ActivityStats]
+    process_stats: list[ProcessStats]

@@ -9,7 +9,7 @@ import os
 import re
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import structlog
 from cryptography.fernet import Fernet
@@ -80,10 +80,12 @@ class TerminalCommand(TimestampMixin, Base):
 
     def __repr__(self) -> str:
         status = "✓" if self.exit_code == 0 else "✗"
-        cmd_preview = self.command[:50] if isinstance(self.command, str) else "[encrypted]"
+        cmd_preview = (
+            self.command[:50] if isinstance(self.command, str) else "[encrypted]"
+        )
         return f"<TerminalCommand {status} {cmd_preview}...>"
 
-    def decrypt_command(self, cipher: Optional[Fernet] = None) -> str:
+    def decrypt_command(self, cipher: Fernet | None = None) -> str:
         """Decrypt stored command"""
         if cipher:
             try:
@@ -103,7 +105,7 @@ class TerminalTracker:
     def __init__(self, store: ActivityStore):
         self.store = store
         self.cipher = store.cipher  # Use same cipher as main store
-        self.current_session: Optional[Dict[str, Any]] = None
+        self.current_session: dict[str, Any] | None = None
         self.shell_history_files = {
             "bash": [".bash_history"],
             "zsh": [".zsh_history", ".zhistory"],
@@ -134,7 +136,7 @@ class TerminalTracker:
                 logger.error("Terminal tracking error", error=str(e))
                 await asyncio.sleep(5)
 
-    def _get_current_session_info(self) -> Dict[str, Any]:
+    def _get_current_session_info(self) -> dict[str, Any]:
         """Get information about the current terminal session"""
         try:
             # Get current working directory
@@ -169,7 +171,7 @@ class TerminalTracker:
             logger.error("Failed to get session info", error=str(e))
             return {}
 
-    def _sanitize_path(self, directory: str) -> Optional[Path]:
+    def _sanitize_path(self, directory: str) -> Path | None:
         """Sanitize and validate directory path"""
         try:
             path = Path(directory).resolve()
@@ -187,7 +189,7 @@ class TerminalTracker:
             logger.warning(f"Invalid path: {directory}, error: {e}")
             return None
 
-    def _get_git_branch(self, directory: str) -> Optional[str]:
+    def _get_git_branch(self, directory: str) -> str | None:
         """Get current git branch for directory with path validation"""
         try:
             # Validate and sanitize path
@@ -211,7 +213,7 @@ class TerminalTracker:
             logger.error(f"Error getting git branch: {e}")
             return None
 
-    def _detect_project_type(self, directory: str) -> Optional[str]:
+    def _detect_project_type(self, directory: str) -> str | None:
         """Detect project type based on files in directory"""
         path = Path(directory)
 
@@ -233,7 +235,7 @@ class TerminalTracker:
 
         return None
 
-    def _categorize_command(self, command: str) -> Dict[str, Any]:
+    def _categorize_command(self, command: str) -> dict[str, Any]:
         """Categorize and analyze a command"""
         command = command.strip()
 
@@ -313,11 +315,11 @@ class TerminalTracker:
                 logger.error(f"Error processing {history_path}", error=str(e))
 
     async def _process_history_file(
-        self, history_path: Path, session_info: Dict[str, Any]
+        self, history_path: Path, session_info: dict[str, Any]
     ):
         """Process a shell history file for new commands"""
         try:
-            with open(history_path, "r", encoding="utf-8", errors="ignore") as f:
+            with open(history_path, encoding="utf-8", errors="ignore") as f:
                 lines = f.readlines()
 
             # Track how many lines we've processed for this file
@@ -339,7 +341,7 @@ class TerminalTracker:
         except Exception as e:
             logger.error(f"Error reading history file {history_path}", error=str(e))
 
-    async def _process_command_line(self, line: str, session_info: Dict[str, Any]):
+    async def _process_command_line(self, line: str, session_info: dict[str, Any]):
         """Process a single command line from history"""
         if not line or line.startswith("#"):
             return
@@ -361,7 +363,7 @@ class TerminalTracker:
         # Store the command
         await self._store_command(command, command_info, session_info)
 
-    def _parse_history_line(self, line: str, shell_type: str) -> Optional[str]:
+    def _parse_history_line(self, line: str, shell_type: str) -> str | None:
         """Parse a history line based on shell type"""
         if shell_type == "zsh":
             # Zsh format: ": 1640995200:0;command"
@@ -373,7 +375,7 @@ class TerminalTracker:
         return line.strip()
 
     async def _store_command(
-        self, command: str, command_info: Dict[str, Any], session_info: Dict[str, Any]
+        self, command: str, command_info: dict[str, Any], session_info: dict[str, Any]
     ):
         """Store a command in the database"""
         async with self.store.async_session() as session:

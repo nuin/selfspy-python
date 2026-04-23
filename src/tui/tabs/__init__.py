@@ -11,4 +11,4 @@ from .apps import AppData, AppsTab
 from .live import LiveTab
 from .summary import SummaryTab
 
-__all__ = ["LiveTab", "AppsTab", "SummaryTab", "AppData"]
+__all__ = ["AppData", "AppsTab", "LiveTab", "SummaryTab"]

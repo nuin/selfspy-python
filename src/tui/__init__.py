@@ -12,9 +12,9 @@ from .tabs import AppsTab, LiveTab, SummaryTab
 from .widgets import Sparkline
 
 __all__ = [
-    "SelfspyApp",
-    "LiveTab",
     "AppsTab",
-    "SummaryTab",
+    "LiveTab",
+    "SelfspyApp",
     "Sparkline",
+    "SummaryTab",
 ]

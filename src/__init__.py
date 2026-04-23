@@ -21,8 +21,8 @@ if src_path not in sys.path:
 __all__ = [
     "ActivityMonitor",
     "ActivityStore",
+    "Click",
+    "Keys",
     "Process",
     "Window",
-    "Keys",
-    "Click",
 ]

@@ -5,11 +5,9 @@ Renders a list of values as a horizontal sparkline using Unicode block
 characters for a compact visual representation of activity over time.
 """
 
-from typing import List
 
 from rich.text import Text
 from textual.widget import Widget
-
 
 # Unicode block characters for 8 levels (0-7)
 BLOCKS = " \u2581\u2582\u2583\u2584\u2585\u2586\u2587"
@@ -31,7 +29,7 @@ class Sparkline(Widget):
 
     def __init__(
         self,
-        data: List[float] | None = None,
+        data: list[float] | None = None,
         max_width: int = 20,
         name: str | None = None,
         id: str | None = None,
@@ -47,21 +45,21 @@ class Sparkline(Widget):
             classes: CSS classes
         """
         super().__init__(name=name, id=id, classes=classes)
-        self._data: List[float] = list(data) if data else []
+        self._data: list[float] = list(data) if data else []
         self.max_width = max_width
 
     @property
-    def data(self) -> List[float]:
+    def data(self) -> list[float]:
         """Get the current data."""
         return self._data
 
     @data.setter
-    def data(self, value: List[float]) -> None:
+    def data(self, value: list[float]) -> None:
         """Set the data and trigger refresh."""
         self._data = list(value) if value else []
         self.refresh()
 
-    def _normalize(self, values: List[float]) -> List[int]:
+    def _normalize(self, values: list[float]) -> list[int]:
         """Normalize values to 0-7 range for block character selection.
 
         Args:
@@ -96,7 +94,7 @@ class Sparkline(Widget):
             String of Unicode block characters
         """
         # Take only the last max_width values
-        display_data = self._data[-self.max_width:] if self._data else []
+        display_data = self._data[-self.max_width :] if self._data else []
 
         if not display_data:
             return ""
@@ -109,7 +107,7 @@ class Sparkline(Widget):
         blocks = self._render_blocks()
         return Text(blocks, style="green")
 
-    def update_data(self, new_data: List[float]) -> None:
+    def update_data(self, new_data: list[float]) -> None:
         """Update the sparkline data.
 
         Args:
@@ -126,5 +124,5 @@ class Sparkline(Widget):
         self._data.append(value)
         # Keep only max_width * 2 values for memory efficiency
         if len(self._data) > self.max_width * 2:
-            self._data = self._data[-self.max_width:]
+            self._data = self._data[-self.max_width :]
         self.refresh()

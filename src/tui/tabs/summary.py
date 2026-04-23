@@ -187,10 +187,14 @@ class SummaryTab(Static):
         try:
             comparison_label = self.query_one("#yesterday-comparison", Label)
             if more_active:
-                comparison_label.update(f"vs Yesterday: +{diff_percent:.0f}% more active")
+                comparison_label.update(
+                    f"vs Yesterday: +{diff_percent:.0f}% more active"
+                )
                 comparison_label.set_classes("comparison-positive")
             else:
-                comparison_label.update(f"vs Yesterday: -{diff_percent:.0f}% less active")
+                comparison_label.update(
+                    f"vs Yesterday: -{diff_percent:.0f}% less active"
+                )
                 comparison_label.set_classes("comparison-negative")
         except Exception:
             pass

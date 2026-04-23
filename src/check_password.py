@@ -4,7 +4,6 @@ Password checking functionality for Selfspy
 
 import hashlib
 import os
-from typing import Optional
 
 from Crypto.Cipher import Blowfish
 
@@ -25,7 +24,7 @@ MAGIC_STRING = (
 
 
 def check(
-    data_dir: str, cipher: Optional[Blowfish.BlowfishCipher], read_only: bool = False
+    data_dir: str, cipher: Blowfish.BlowfishCipher | None, read_only: bool = False
 ) -> bool:
     """Check if the password is correct"""
     fname = os.path.join(data_dir, DIGEST_NAME)
@@ -46,7 +45,7 @@ def check(
         return True
 
 
-def create_cipher(password: str) -> Optional[Blowfish.BlowfishCipher]:
+def create_cipher(password: str) -> Blowfish.BlowfishCipher | None:
     """Create a Blowfish cipher from password"""
     if not password:
         return None

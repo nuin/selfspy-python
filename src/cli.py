@@ -89,7 +89,7 @@ def start(
     except KeyboardInterrupt:
         console.print("\n[yellow]Shutting down gracefully...[/yellow]")
     except Exception as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
+        console.print(f"[red]Error: {e!s}[/red]")
         raise typer.Exit(1)
     finally:
         if "loop" in locals():
@@ -128,7 +128,7 @@ def stats(
             typer.echo(stats)
 
     except Exception as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
+        console.print(f"[red]Error: {e!s}[/red]")
         raise typer.Exit(1)
 
 

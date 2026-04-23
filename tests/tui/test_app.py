@@ -1,10 +1,9 @@
 """Tests for the main SelfspyApp."""
 
 import pytest
-
 from src.tui.app import SelfspyApp
-from src.tui.tabs.live import LiveTab
 from src.tui.tabs.apps import AppsTab
+from src.tui.tabs.live import LiveTab
 from src.tui.tabs.summary import SummaryTab
 
 
@@ -22,6 +21,7 @@ class TestSelfspyApp:
     async def test_app_has_tabbed_content(self):
         """Test that the app has TabbedContent."""
         from textual.widgets import TabbedContent
+
         app = SelfspyApp()
         async with app.run_test() as pilot:
             tabbed = app.query_one(TabbedContent)
@@ -60,6 +60,7 @@ class TestSelfspyApp:
             await pilot.press("2")
             # Should be on Apps tab now
             from textual.widgets import TabbedContent
+
             tabbed = app.query_one(TabbedContent)
             # The active tab should change (implementation-specific)
             assert tabbed is not None

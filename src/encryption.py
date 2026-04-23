@@ -8,7 +8,6 @@ import os
 import time
 from collections import defaultdict
 from pathlib import Path
-from typing import List, Optional
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
@@ -17,7 +16,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 MAGIC_STRING = b"selfspy-v2-verification-token"
 
 # Rate limiting for password verification
-_password_attempts: dict[str, List[float]] = defaultdict(list)
+_password_attempts: dict[str, list[float]] = defaultdict(list)
 MAX_ATTEMPTS = 5
 LOCKOUT_DURATION = 300  # 5 minutes in seconds
 
@@ -27,7 +26,7 @@ def _get_rate_limit_path(data_dir: Path) -> Path:
     return data_dir / ".rate_limit.json"
 
 
-def _load_rate_limit(data_dir: Path) -> List[float]:
+def _load_rate_limit(data_dir: Path) -> list[float]:
     """Load rate limit attempts from persistent storage"""
     path = _get_rate_limit_path(data_dir)
     current_time = time.time()
@@ -36,11 +35,12 @@ def _load_rate_limit(data_dir: Path) -> List[float]:
         return []
 
     try:
-        with open(path, "r") as f:
+        with open(path) as f:
             data = json.load(f)
         # Filter out old attempts while loading
         attempts = [
-            ts for ts in data.get("attempts", [])
+            ts
+            for ts in data.get("attempts", [])
             if current_time - ts < LOCKOUT_DURATION
         ]
         return attempts
@@ -48,16 +48,13 @@ def _load_rate_limit(data_dir: Path) -> List[float]:
         return []
 
 
-def _save_rate_limit(data_dir: Path, attempts: List[float]) -> None:
+def _save_rate_limit(data_dir: Path, attempts: list[float]) -> None:
     """Save rate limit attempts to persistent storage"""
     path = _get_rate_limit_path(data_dir)
     current_time = time.time()
 
     # Only save recent attempts
-    recent_attempts = [
-        ts for ts in attempts
-        if current_time - ts < LOCKOUT_DURATION
-    ]
+    recent_attempts = [ts for ts in attempts if current_time - ts < LOCKOUT_DURATION]
 
     try:
         data_dir.mkdir(parents=True, exist_ok=True)
@@ -85,7 +82,7 @@ def _get_or_create_salt(data_dir: Path) -> bytes:
         return salt
 
 
-def create_cipher(password: Optional[str], data_dir: Path) -> Optional[Fernet]:
+def create_cipher(password: str | None, data_dir: Path) -> Fernet | None:
     """Create a Fernet cipher from password using installation-specific salt"""
     if not password:
         return None
@@ -152,7 +149,7 @@ def _record_password_attempt(data_dir: Path) -> None:
 
 
 async def check_password(
-    data_dir: Path, cipher: Optional[Fernet], read_only: bool = False
+    data_dir: Path, cipher: Fernet | None, read_only: bool = False
 ) -> bool:
     """Check if the password is correct with rate limiting"""
     digest_path = data_dir / "password.digest"

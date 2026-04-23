@@ -3,7 +3,6 @@ Configuration settings for Selfspy using Pydantic
 """
 
 from pathlib import Path
-from typing import List
 
 from pydantic import ConfigDict, field_validator
 from pydantic_settings import BaseSettings
@@ -40,7 +39,7 @@ class Settings(BaseSettings):
     max_daily_screenshots: int = 100
     min_window_duration: int = 10  # seconds
     screenshot_cleanup_days: int = 30  # Auto-cleanup after 30 days
-    screenshot_excluded_apps: List[str] = [
+    screenshot_excluded_apps: list[str] = [
         "System Settings",
         "System Preferences",
         "1Password",
@@ -62,7 +61,7 @@ class Settings(BaseSettings):
 
     # Privacy settings
     privacy_mode: bool = False  # When enabled, restricts certain types of logging
-    privacy_excluded_apps: List[str] = [
+    privacy_excluded_apps: list[str] = [
         "1Password",
         "Keychain Access",
         "System Settings",
@@ -123,7 +122,7 @@ class Settings(BaseSettings):
             raise ValueError("Minimum window duration must be at least 1 second")
         return v
 
-    def excluded_bundle_patterns(self) -> List[str]:
+    def excluded_bundle_patterns(self) -> list[str]:
         """Get list of excluded bundle patterns"""
         patterns = self.excluded_bundles.copy()
         if self.privacy_mode:

@@ -1,9 +1,8 @@
 """Tests for the SummaryTab component."""
 
 import pytest
-from textual.app import App, ComposeResult
-
 from src.tui.tabs.summary import SummaryTab
+from textual.app import App, ComposeResult
 
 
 class SummaryTabTestApp(App):

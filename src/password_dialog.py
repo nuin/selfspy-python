@@ -3,14 +3,14 @@ Password dialog functionality for Selfspy
 """
 
 import getpass
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from rich.prompt import Prompt
 
 
 def get_password(
-    verify: Optional[Callable[[str], bool]] = None,
-    message: Optional[str] = None,
+    verify: Callable[[str], bool] | None = None,
+    message: str | None = None,
     force_save: bool = False,
 ) -> str:
     """Get password using Rich prompt"""

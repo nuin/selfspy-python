@@ -3,13 +3,12 @@ Permission checking and setup for macOS
 """
 
 import platform
-from typing import Tuple
 
 from rich.console import Console
 from rich.prompt import Confirm
 
 
-def check_macos_permissions() -> Tuple[bool, str]:
+def check_macos_permissions() -> tuple[bool, str]:
     """
     Check macOS permissions and return (has_permissions, message)
     """

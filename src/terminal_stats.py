@@ -6,7 +6,6 @@ import asyncio
 from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 import typer
 from rich.console import Console
@@ -23,7 +22,7 @@ console = Console()
 
 
 def create_command_frequency_chart(
-    commands: List[Tuple[str, int]], title: str = "Command Frequency"
+    commands: list[tuple[str, int]], title: str = "Command Frequency"
 ) -> Table:
     """Create a frequency chart for terminal commands"""
     if not commands:
@@ -55,12 +54,12 @@ def create_command_frequency_chart(
 @app.command()
 def commands(
     days: int = typer.Option(7, "--days", "-d", help="Number of days to analyze"),
-    directory: Optional[str] = typer.Option(None, "--dir", help="Filter by directory"),
-    command_type: Optional[str] = typer.Option(
+    directory: str | None = typer.Option(None, "--dir", help="Filter by directory"),
+    command_type: str | None = typer.Option(
         None, "--type", help="Filter by command type"
     ),
     data_dir: Path = typer.Option(None, "--data-dir", help="Data directory"),
-    password: Optional[str] = typer.Option(
+    password: str | None = typer.Option(
         None, "--password", "-p", help="Password for encrypted data"
     ),
 ):
@@ -83,7 +82,7 @@ def commands(
             loop.close()
 
     except Exception as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
+        console.print(f"[red]Error: {e!s}[/red]")
         raise typer.Exit(1)
 
 
@@ -91,7 +90,7 @@ def commands(
 def sessions(
     days: int = typer.Option(7, "--days", "-d", help="Number of days to analyze"),
     data_dir: Path = typer.Option(None, "--data-dir", help="Data directory"),
-    password: Optional[str] = typer.Option(
+    password: str | None = typer.Option(
         None, "--password", "-p", help="Password for encrypted data"
     ),
 ):
@@ -112,7 +111,7 @@ def sessions(
             loop.close()
 
     except Exception as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
+        console.print(f"[red]Error: {e!s}[/red]")
         raise typer.Exit(1)
 
 
@@ -120,7 +119,7 @@ def sessions(
 def projects(
     days: int = typer.Option(30, "--days", "-d", help="Number of days to analyze"),
     data_dir: Path = typer.Option(None, "--data-dir", help="Data directory"),
-    password: Optional[str] = typer.Option(
+    password: str | None = typer.Option(
         None, "--password", "-p", help="Password for encrypted data"
     ),
 ):
@@ -141,16 +140,16 @@ def projects(
             loop.close()
 
     except Exception as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
+        console.print(f"[red]Error: {e!s}[/red]")
         raise typer.Exit(1)
 
 
 @app.command()
 def workflow(
     days: int = typer.Option(7, "--days", "-d", help="Number of days to analyze"),
-    directory: Optional[str] = typer.Option(None, "--dir", help="Filter by directory"),
+    directory: str | None = typer.Option(None, "--dir", help="Filter by directory"),
     data_dir: Path = typer.Option(None, "--data-dir", help="Data directory"),
-    password: Optional[str] = typer.Option(
+    password: str | None = typer.Option(
         None, "--password", "-p", help="Password for encrypted data"
     ),
 ):
@@ -173,15 +172,15 @@ def workflow(
             loop.close()
 
     except Exception as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
+        console.print(f"[red]Error: {e!s}[/red]")
         raise typer.Exit(1)
 
 
 async def _get_command_stats(
     store: ActivityStore,
     days: int,
-    directory: Optional[str] = None,
-    command_type: Optional[str] = None,
+    directory: str | None = None,
+    command_type: str | None = None,
 ):
     """Get terminal command statistics"""
     end_date = datetime.now()
@@ -401,7 +400,7 @@ async def _get_project_stats(store: ActivityStore, days: int):
 
 
 async def _get_workflow_stats(
-    store: ActivityStore, days: int, directory: Optional[str] = None
+    store: ActivityStore, days: int, directory: str | None = None
 ):
     """Get workflow pattern statistics"""
     end_date = datetime.now()
@@ -456,7 +455,7 @@ async def _get_workflow_stats(
 
 
 def _display_command_stats(
-    stats: Dict, days: int, directory: Optional[str], command_type: Optional[str]
+    stats: dict, days: int, directory: str | None, command_type: str | None
 ):
     """Display terminal command statistics"""
 
@@ -533,7 +532,7 @@ def _display_command_stats(
         console.print(dir_table)
 
 
-def _display_session_stats(stats: Dict, days: int):
+def _display_session_stats(stats: dict, days: int):
     """Display terminal session statistics"""
 
     header = Panel(
@@ -573,7 +572,7 @@ def _display_session_stats(stats: Dict, days: int):
         console.print(dir_table)
 
 
-def _display_project_stats(stats: Dict, days: int):
+def _display_project_stats(stats: dict, days: int):
     """Display project-based statistics"""
 
     header = Panel(
@@ -609,7 +608,7 @@ def _display_project_stats(stats: Dict, days: int):
         console.print(git_table)
 
 
-def _display_workflow_stats(stats: Dict, days: int, directory: Optional[str]):
+def _display_workflow_stats(stats: dict, days: int, directory: str | None):
     """Display workflow pattern statistics"""
 
     filter_text = f" in {directory}" if directory else ""

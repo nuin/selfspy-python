@@ -5,7 +5,6 @@ Displays current keystroke/click counts with sparklines showing
 recent activity patterns, current window focus, and session status.
 """
 
-from typing import List
 
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal
@@ -58,14 +57,16 @@ class MetricDisplay(Static):
         self._value = value
         self._rate = rate
         self.rate_suffix = rate_suffix
-        self._sparkline_data: List[float] = []
+        self._sparkline_data: list[float] = []
 
     def compose(self) -> ComposeResult:
         with Horizontal():
             yield Label(self.label_text, classes="metric-label")
             yield Label(f"{self._value:,}", classes="metric-value", id="value")
             yield Sparkline(data=self._sparkline_data, max_width=20, id="sparkline")
-            yield Label(f"{self._rate}{self.rate_suffix}", classes="metric-rate", id="rate")
+            yield Label(
+                f"{self._rate}{self.rate_suffix}", classes="metric-rate", id="rate"
+            )
 
     def update(self, value: int, rate: int) -> None:
         """Update the metric value and rate."""
@@ -146,8 +147,8 @@ class LiveTab(Static):
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.keystroke_history: List[float] = []
-        self.click_history: List[float] = []
+        self.keystroke_history: list[float] = []
+        self.click_history: list[float] = []
 
     def compose(self) -> ComposeResult:
         yield MetricDisplay("Keystrokes", id="keystroke-metric")
@@ -158,16 +159,24 @@ class LiveTab(Static):
         with Container(classes="current-info"):
             with Horizontal():
                 yield Label("Current:", classes="info-label")
-                yield Label(self.current_window or "None", classes="info-value", id="current-window")
+                yield Label(
+                    self.current_window or "None",
+                    classes="info-value",
+                    id="current-window",
+                )
 
             with Horizontal():
                 yield Label("Status:", classes="info-label")
                 yield Label(
                     self.status,
-                    classes="info-value status-active" if self.status == "ACTIVE" else "info-value status-idle",
+                    classes="info-value status-active"
+                    if self.status == "ACTIVE"
+                    else "info-value status-idle",
                     id="status-label",
                 )
-                yield Label(self.session_duration, classes="session-time", id="session-time")
+                yield Label(
+                    self.session_duration, classes="session-time", id="session-time"
+                )
 
     def update_metrics(
         self,
@@ -190,14 +199,20 @@ class LiveTab(Static):
 
         # Update metric displays
         try:
-            self.query_one("#keystroke-metric", MetricDisplay).update(keystrokes, keys_per_min)
-            self.query_one("#click-metric", MetricDisplay).update(clicks, clicks_per_min)
+            self.query_one("#keystroke-metric", MetricDisplay).update(
+                keystrokes, keys_per_min
+            )
+            self.query_one("#click-metric", MetricDisplay).update(
+                clicks, clicks_per_min
+            )
             self.query_one("#current-window", Label).update(current_window or "None")
 
             status_label = self.query_one("#status-label", Label)
             status_label.update(status)
             status_label.set_classes(
-                "info-value status-active" if status == "ACTIVE" else "info-value status-idle"
+                "info-value status-active"
+                if status == "ACTIVE"
+                else "info-value status-idle"
             )
 
             self.query_one("#session-time", Label).update(session_duration)

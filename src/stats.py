@@ -5,7 +5,6 @@ Statistics and visualization module for Selfspy
 import asyncio
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.align import Align
@@ -34,7 +33,7 @@ def callback():
 def summary(
     days: int = typer.Option(7, "--days", "-d", help="Number of days to analyze"),
     data_dir: Path = typer.Option(None, "--data-dir", help="Data directory"),
-    password: Optional[str] = typer.Option(
+    password: str | None = typer.Option(
         None, "--password", "-p", help="Password for encrypted data"
     ),
 ):
@@ -54,7 +53,7 @@ def summary(
             loop.close()
 
     except Exception as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
+        console.print(f"[red]Error: {e!s}[/red]")
         raise typer.Exit(1)
 
 
@@ -374,7 +373,7 @@ def _display_stats(stats, days):
             insights_grid.add_row("Keys/Click Ratio:", f"{ratio:.1f}")
 
         # Productivity estimate (very rough heuristic)
-        productivity = min(100, int((avg_keys_per_day / 100)))
+        productivity = min(100, int(avg_keys_per_day / 100))
         insights_grid.add_row("Productivity:", f"[bold]{productivity}/100[/bold]")
 
     layout["insights"].update(

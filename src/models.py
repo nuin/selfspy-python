@@ -3,7 +3,6 @@ SQLAlchemy models for Selfspy using modern features and macOS support
 """
 
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import Boolean, ForeignKey, Index, Text, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -31,7 +30,7 @@ class Session(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     start_time: Mapped[datetime] = mapped_column(index=True)
-    end_time: Mapped[Optional[datetime]] = mapped_column(index=True)
+    end_time: Mapped[datetime | None] = mapped_column(index=True)
 
     # Session metrics
     total_keystrokes: Mapped[int] = mapped_column(default=0)
@@ -40,8 +39,8 @@ class Session(TimestampMixin, Base):
     idle_seconds: Mapped[int] = mapped_column(default=0)  # Time without activity
 
     # Session metadata
-    hostname: Mapped[Optional[str]]
-    platform: Mapped[Optional[str]]  # darwin, linux, windows
+    hostname: Mapped[str | None]
+    platform: Mapped[str | None]  # darwin, linux, windows
 
     def __repr__(self) -> str:
         return f"<Session {self.start_time} - {self.end_time}>"
@@ -54,7 +53,7 @@ class Process(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(index=True)
-    bundle_id: Mapped[Optional[str]] = mapped_column(
+    bundle_id: Mapped[str | None] = mapped_column(
         index=True
     )  # macOS bundle identifier
 
@@ -81,12 +80,12 @@ class Window(TimestampMixin, Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(Text, index=True)
     process_id: Mapped[int] = mapped_column(ForeignKey("process.id"), index=True)
-    session_id: Mapped[Optional[int]] = mapped_column(
+    session_id: Mapped[int | None] = mapped_column(
         ForeignKey("session.id"), index=True
     )
 
     # macOS specific fields
-    bundle_id: Mapped[Optional[str]] = mapped_column(index=True)
+    bundle_id: Mapped[str | None] = mapped_column(index=True)
     is_minimized: Mapped[bool] = mapped_column(Boolean, default=False)
     is_fullscreen: Mapped[bool] = mapped_column(Boolean, default=False)
 
@@ -94,18 +93,18 @@ class Window(TimestampMixin, Base):
     focus_seconds: Mapped[int] = mapped_column(
         default=0
     )  # Time with keyboard/mouse activity
-    last_activity_at: Mapped[Optional[datetime]]  # Last input event timestamp
+    last_activity_at: Mapped[datetime | None]  # Last input event timestamp
 
     # Window geometry
-    geometry_x: Mapped[Optional[int]]
-    geometry_y: Mapped[Optional[int]]
-    geometry_width: Mapped[Optional[int]]
-    geometry_height: Mapped[Optional[int]]
+    geometry_x: Mapped[int | None]
+    geometry_y: Mapped[int | None]
+    geometry_width: Mapped[int | None]
+    geometry_height: Mapped[int | None]
 
     # Screen information
-    screen_width: Mapped[Optional[int]]
-    screen_height: Mapped[Optional[int]]
-    display_index: Mapped[Optional[int]] = mapped_column(default=0)
+    screen_width: Mapped[int | None]
+    screen_height: Mapped[int | None]
+    display_index: Mapped[int | None] = mapped_column(default=0)
 
     # Relationships
     process: Mapped[Process] = relationship(back_populates="windows")
@@ -160,7 +159,7 @@ class Click(TimestampMixin, Base):
 
     # Mouse movement tracking
     move_distance: Mapped[int] = mapped_column(default=0)  # Total pixels moved
-    move_points: Mapped[Optional[str]]  # JSON string of movement coordinates
+    move_points: Mapped[str | None]  # JSON string of movement coordinates
 
     # Foreign keys
     process_id: Mapped[int] = mapped_column(ForeignKey("process.id"), index=True)

@@ -6,7 +6,6 @@ and activity percentages, with visual progress bars.
 """
 
 from dataclasses import dataclass
-from typing import List
 
 from rich.text import Text
 from textual.app import ComposeResult
@@ -42,10 +41,10 @@ class AppsTab(Static):
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._apps: List[AppData] = []
+        self._apps: list[AppData] = []
 
     @property
-    def apps(self) -> List[AppData]:
+    def apps(self) -> list[AppData]:
         """Get the current apps list."""
         return self._apps
 
@@ -74,7 +73,7 @@ class AppsTab(Static):
         bar = "\u2588" * filled + "\u2591" * empty
         return Text(f"{bar} {percent:5.1f}%")
 
-    def update_apps(self, apps: List[AppData]) -> None:
+    def update_apps(self, apps: list[AppData]) -> None:
         """Update the application list.
 
         Args:

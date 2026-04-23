@@ -4,7 +4,7 @@ SelfspyApp - Main Textual application
 The primary TUI application with tabbed interface for Live, Apps, and Summary views.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -58,7 +58,7 @@ class SelfspyApp(App):
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._monitor_state: Dict[str, Any] = {}
+        self._monitor_state: dict[str, Any] = {}
 
     def compose(self) -> ComposeResult:
         """Create the app layout."""
@@ -123,7 +123,7 @@ class SelfspyApp(App):
         except Exception:
             pass
 
-    def update_apps(self, apps: List[AppData]) -> None:
+    def update_apps(self, apps: list[AppData]) -> None:
         """Update the apps tab with application data.
 
         Args:
@@ -145,7 +145,7 @@ class SelfspyApp(App):
         total_keystrokes: int = 0,
         total_clicks: int = 0,
         windows_switched: int = 0,
-        yesterday_diff: Optional[float] = None,
+        yesterday_diff: float | None = None,
         more_active: bool = True,
     ) -> None:
         """Update the summary tab with session statistics.
@@ -179,7 +179,7 @@ class SelfspyApp(App):
         except Exception:
             pass
 
-    def set_monitor_state(self, state: Dict[str, Any]) -> None:
+    def set_monitor_state(self, state: dict[str, Any]) -> None:
         """Set the monitor state reference.
 
         This allows the app to access ActivityMonitor state for polling.

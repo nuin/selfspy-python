@@ -5,7 +5,6 @@ Enhanced statistics and visualization module for Selfspy with rich visuals
 import asyncio
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 import typer
 from rich.align import Align
@@ -25,7 +24,7 @@ console = Console()
 
 
 def create_bar_chart(
-    data: List[Tuple[str, int]], max_width: int = 40, title: str = ""
+    data: list[tuple[str, int]], max_width: int = 40, title: str = ""
 ) -> Table:
     """Create a horizontal bar chart using Rich"""
     if not data:
@@ -50,7 +49,7 @@ def create_bar_chart(
     return table
 
 
-def create_time_heatmap(hourly_data: Dict[int, int]) -> Table:
+def create_time_heatmap(hourly_data: dict[int, int]) -> Table:
     """Create a time-based heatmap"""
     table = Table(title="⏰ Activity Heatmap (24h)", box=None)
 
@@ -84,7 +83,7 @@ def create_time_heatmap(hourly_data: Dict[int, int]) -> Table:
     return table
 
 
-def calculate_productivity_score(stats: Dict) -> Tuple[int, str, str]:
+def calculate_productivity_score(stats: dict) -> tuple[int, str, str]:
     """Calculate a productivity score based on activity patterns"""
     keystrokes = stats["totals"].total_keystrokes
     windows = stats["totals"].total_windows
@@ -113,7 +112,7 @@ def calculate_productivity_score(stats: Dict) -> Tuple[int, str, str]:
     return base_score, level, color
 
 
-def create_insights_panel(stats: Dict, days: int) -> List[Panel]:
+def create_insights_panel(stats: dict, days: int) -> list[Panel]:
     """Generate insights about user activity"""
     panels = []
 
@@ -149,7 +148,7 @@ def create_insights_panel(stats: Dict, days: int) -> List[Panel]:
 def enhanced(
     days: int = typer.Option(7, "--days", "-d", help="Number of days to analyze"),
     data_dir: Path = typer.Option(None, "--data-dir", help="Data directory"),
-    password: Optional[str] = typer.Option(
+    password: str | None = typer.Option(
         None, "--password", "-p", help="Password for encrypted data"
     ),
 ):
@@ -171,7 +170,7 @@ def enhanced(
             loop.close()
 
     except Exception as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
+        console.print(f"[red]Error: {e!s}[/red]")
         raise typer.Exit(1)
 
 
@@ -179,7 +178,7 @@ def enhanced(
 def timeline(
     days: int = typer.Option(1, "--days", "-d", help="Number of days to show"),
     data_dir: Path = typer.Option(None, "--data-dir", help="Data directory"),
-    password: Optional[str] = typer.Option(
+    password: str | None = typer.Option(
         None, "--password", "-p", help="Password for encrypted data"
     ),
 ):
@@ -198,7 +197,7 @@ def timeline(
             loop.close()
 
     except Exception as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
+        console.print(f"[red]Error: {e!s}[/red]")
         raise typer.Exit(1)
 
 
@@ -297,7 +296,7 @@ async def _get_enhanced_stats(store: ActivityStore, days: int):
         return {"processes": process_stats.all(), "totals": totals}
 
 
-async def _get_hourly_stats(store: ActivityStore, days: int) -> Dict[int, int]:
+async def _get_hourly_stats(store: ActivityStore, days: int) -> dict[int, int]:
     """Get activity data by hour of day"""
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days)
@@ -341,7 +340,7 @@ async def _get_timeline_data(store: ActivityStore, days: int):
         return await session.execute(timeline_query)
 
 
-def _display_enhanced_stats(stats: Dict, hourly_data: Dict[int, int], days: int):
+def _display_enhanced_stats(stats: dict, hourly_data: dict[int, int], days: int):
     """Display enhanced statistics with rich visualizations"""
 
     # Header with emoji and styling
@@ -527,7 +526,7 @@ def live(
                     break
 
     except Exception as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
+        console.print(f"[red]Error: {e!s}[/red]")
 
 
 if __name__ == "__main__":

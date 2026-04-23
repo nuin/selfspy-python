@@ -7,7 +7,6 @@ import asyncio
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Union
 
 import aiofiles
 import structlog
@@ -22,11 +21,11 @@ class MacScreenCapture:
 
     def __init__(
         self,
-        output_dir: Union[str, Path] = "./screenshots",
+        output_dir: str | Path = "./screenshots",
         periodic_interval: int = 300,  # 5 minutes
         max_daily_captures: int = 100,
         min_window_duration: int = 10,  # seconds
-        excluded_apps: Optional[List[str]] = None,
+        excluded_apps: list[str] | None = None,
     ):
         self.output_dir = Path(output_dir).expanduser()
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -41,12 +40,12 @@ class MacScreenCapture:
         self.last_capture = datetime.now()
         self.daily_captures = 0
         self.last_reset_date = datetime.now().date()
-        self.capture_history: Set[str] = set()  # Track unique window titles
-        self.current_window: Optional[Dict] = None
-        self.window_start_time: Optional[datetime] = None
+        self.capture_history: set[str] = set()  # Track unique window titles
+        self.current_window: dict | None = None
+        self.window_start_time: datetime | None = None
 
         # Background task handle
-        self.periodic_task: Optional[asyncio.Task] = None
+        self.periodic_task: asyncio.Task | None = None
         self.running = False
 
     async def start_periodic_capture(self):
@@ -93,7 +92,7 @@ class MacScreenCapture:
 
             await asyncio.sleep(min(60, self.periodic_interval))
 
-    async def update_window_info(self, window_info: Dict):
+    async def update_window_info(self, window_info: dict):
         """Update current window information and trigger smart capture"""
         if window_info != self.current_window:
             # Check if previous window meets duration threshold
@@ -148,13 +147,13 @@ class MacScreenCapture:
 
     async def capture(
         self,
-        filename: Optional[str] = None,
+        filename: str | None = None,
         window: bool = False,
         interactive: bool = False,
-        screen: Optional[int] = None,
+        screen: int | None = None,
         clipboard: bool = False,
         no_shadow: bool = False,
-    ) -> Optional[Path]:
+    ) -> Path | None:
         """
         Capture screen or window using native macOS screencapture command.
         """
@@ -211,7 +210,7 @@ class MacScreenCapture:
         )
         return f"{timestamp}_{app_name}_{window_title}.png"
 
-    async def _save_metadata(self, screenshot_path: Path, window_info: Dict):
+    async def _save_metadata(self, screenshot_path: Path, window_info: dict):
         """Save metadata for screenshot"""
         metadata = {
             "timestamp": datetime.now().isoformat(),
@@ -247,7 +246,7 @@ class MacScreenCapture:
         except Exception as e:
             logger.error("Cleanup error", error=str(e))
 
-    def get_capture_stats(self) -> Dict:
+    def get_capture_stats(self) -> dict:
         """Get capture statistics"""
         return {
             "daily_captures": self.daily_captures,

@@ -1,17 +1,16 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Optional, Tuple
 
 
 class WindowTracker(ABC):
     """Abstract base class for window tracking"""
 
     @abstractmethod
-    async def get_active_window(self) -> Dict[str, str]:
+    async def get_active_window(self) -> dict[str, str]:
         """Get information about the currently active window"""
         pass
 
     @abstractmethod
-    def get_window_geometry(self) -> Optional[Tuple[int, int, int, int]]:
+    def get_window_geometry(self) -> tuple[int, int, int, int] | None:
         """Get window geometry (x, y, width, height)"""
         pass
 

@@ -4,16 +4,14 @@ Activity data storage implementation
 
 import asyncio
 from pathlib import Path
-from typing import Optional, Tuple
 
 import structlog
+from alembic import command
+from alembic.config import Config
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.future import select
 from sqlalchemy.orm import sessionmaker
-
-from alembic import command
-from alembic.config import Config
 
 from .config import Settings
 from .encryption import check_password, create_cipher
@@ -25,7 +23,7 @@ logger = structlog.get_logger()
 class ActivityStore:
     """Asynchronous activity data store"""
 
-    def __init__(self, settings: Settings, password: Optional[str] = None):
+    def __init__(self, settings: Settings, password: str | None = None):
         """Initialize activity store (sync only - call initialize() to complete setup)"""
         self.settings = settings
         self.password = password
@@ -43,9 +41,9 @@ class ActivityStore:
 
         # Create cipher with installation-specific salt
         self.cipher = create_cipher(password, settings.data_dir) if password else None
-        self.current_window_id: Optional[int] = None
-        self.current_process_id: Optional[int] = None
-        self.current_session_id: Optional[int] = None
+        self.current_window_id: int | None = None
+        self.current_process_id: int | None = None
+        self.current_session_id: int | None = None
         self._initialized = False
 
     def _run_migrations(self):
@@ -105,7 +103,7 @@ class ActivityStore:
         process_name: str,
         window_title: str,
         bundle: str,
-        geometry: Optional[Tuple[int, int, int, int]] = None,
+        geometry: tuple[int, int, int, int] | None = None,
     ):
         """Update current window information"""
         async with self.async_session() as session:
