@@ -10,7 +10,7 @@ src_path = str(Path(__file__).parent.parent / "src")
 if src_path not in sys.path:
     sys.path.append(src_path)
 
-from selfspy.models import Process, Window
+from selfspy.storage import Process, Window
 
 
 def test_process_creation(db_session):

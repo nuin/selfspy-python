@@ -24,8 +24,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from .activity_store import ActivityStore
-from .models import Base, TimestampMixin
+from .storage import Store
+from .storage.models import Base, TimestampMixin
 
 logger = structlog.get_logger()
 
@@ -102,7 +102,7 @@ class TerminalCommand(TimestampMixin, Base):
 class TerminalTracker:
     """Track terminal sessions and command execution"""
 
-    def __init__(self, store: ActivityStore):
+    def __init__(self, store: Store):
         self.store = store
         self.cipher = store.cipher  # Use same cipher as main store
         self.current_session: dict[str, Any] | None = None
@@ -433,7 +433,7 @@ class TerminalTracker:
                 )
 
 
-async def start_terminal_tracking(store: ActivityStore):
+async def start_terminal_tracking(store: Store):
     """Start terminal tracking in background"""
     tracker = TerminalTracker(store)
     await tracker.start_tracking()
@@ -445,7 +445,7 @@ if __name__ == "__main__":
 
     async def test_tracker():
         settings = Settings()
-        store = ActivityStore(settings)
+        store = Store(settings)
         await start_terminal_tracking(store)
 
     asyncio.run(test_tracker())

@@ -15,9 +15,8 @@ from rich.table import Table
 from rich.tree import Tree
 from sqlalchemy import distinct, extract, func, select
 
-from .activity_store import ActivityStore
 from .config import Settings
-from .models import Click, Keys, Process, Window
+from .storage import Click, Keys, Process, Store, Window
 
 app = typer.Typer(help="Enhanced Selfspy Statistics")
 console = Console()
@@ -155,7 +154,7 @@ def enhanced(
     """Show enhanced activity statistics with rich visualizations"""
     try:
         settings = Settings(data_dir=data_dir if data_dir else Settings().data_dir)
-        store = ActivityStore(settings, password)
+        store = Store(settings, password)
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -185,7 +184,7 @@ def timeline(
     """Show activity timeline"""
     try:
         settings = Settings(data_dir=data_dir if data_dir else Settings().data_dir)
-        store = ActivityStore(settings, password)
+        store = Store(settings, password)
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -201,7 +200,7 @@ def timeline(
         raise typer.Exit(1)
 
 
-async def _get_enhanced_stats(store: ActivityStore, days: int):
+async def _get_enhanced_stats(store: Store, days: int):
     """Get enhanced statistics data"""
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days)
@@ -296,7 +295,7 @@ async def _get_enhanced_stats(store: ActivityStore, days: int):
         return {"processes": process_stats.all(), "totals": totals}
 
 
-async def _get_hourly_stats(store: ActivityStore, days: int) -> dict[int, int]:
+async def _get_hourly_stats(store: Store, days: int) -> dict[int, int]:
     """Get activity data by hour of day"""
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days)
@@ -315,7 +314,7 @@ async def _get_hourly_stats(store: ActivityStore, days: int) -> dict[int, int]:
         return {int(row.hour): int(row.keystrokes) for row in result.all()}
 
 
-async def _get_timeline_data(store: ActivityStore, days: int):
+async def _get_timeline_data(store: Store, days: int):
     """Get timeline data for activity visualization"""
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days)
@@ -489,7 +488,7 @@ def live(
 
     try:
         settings = Settings(data_dir=data_dir if data_dir else Settings().data_dir)
-        store = ActivityStore(settings, password=None)
+        store = Store(settings, password=None)
 
         with console.screen():
             while True:

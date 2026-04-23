@@ -6,8 +6,7 @@ import sys
 from pathlib import Path
 
 from .activity_monitor import ActivityMonitor
-from .activity_store import ActivityStore
-from .models import Click, Keys, Process, Window
+from .storage import Click, Keys, Process, Store, Window
 
 __version__ = "1.0.0"
 __author__ = "nuin"
@@ -20,9 +19,9 @@ if src_path not in sys.path:
 
 __all__ = [
     "ActivityMonitor",
-    "ActivityStore",
     "Click",
     "Keys",
     "Process",
+    "Store",
     "Window",
 ]

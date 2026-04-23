@@ -15,9 +15,8 @@ from rich.table import Table
 from rich.text import Text
 from sqlalchemy import distinct, func, select
 
-from .activity_store import ActivityStore
 from .config import Settings
-from .models import Click, Keys, Process, Window
+from .storage import Click, Keys, Process, Store, Window
 
 app = typer.Typer(help="Selfspy Statistics")
 console = Console()
@@ -40,7 +39,7 @@ def summary(
     """Show activity summary"""
     try:
         settings = Settings(data_dir=data_dir if data_dir else Settings().data_dir)
-        store = ActivityStore(settings, password)
+        store = Store(settings, password)
 
         # Create and run async loop
         loop = asyncio.new_event_loop()
@@ -57,7 +56,7 @@ def summary(
         raise typer.Exit(1)
 
 
-async def _get_stats(store: ActivityStore, days: int):
+async def _get_stats(store: Store, days: int):
     """Get activity statistics"""
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days)

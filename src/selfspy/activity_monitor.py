@@ -13,9 +13,9 @@ from typing import Any
 import structlog
 from pynput import mouse
 
-from .activity_store import ActivityStore
 from .config import Settings
 from .platform.input_tracker import InputTracker
+from .storage import Store
 from .terminal_tracker import TerminalTracker
 
 logger = structlog.get_logger()
@@ -24,7 +24,7 @@ logger = structlog.get_logger()
 class ActivityMonitor:
     """Activity monitor implementation"""
 
-    def __init__(self, settings: Settings, store: "ActivityStore", debug: bool = False):
+    def __init__(self, settings: Settings, store: "Store", debug: bool = False):
         self.settings = settings
         self.store = store
         self.current_window: dict[str, str] | None = None
@@ -283,7 +283,7 @@ class ActivityMonitor:
 
             from sqlalchemy import select
 
-            from .models import Session
+            from .storage import Session
 
             yesterday = date.today() - timedelta(days=1)
             yesterday_start = datetime.combine(yesterday, datetime.min.time())

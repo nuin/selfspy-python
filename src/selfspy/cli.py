@@ -12,12 +12,11 @@ from rich.console import Console
 from rich.traceback import install
 
 from .activity_monitor import ActivityMonitor
-from .activity_store import ActivityStore
 from .config import Settings
 from .enhanced_stats import app as enhanced_stats_app
-from .password_dialog import get_password
 from .permissions import check_and_request_permissions
 from .stats import app as stats_app
+from .storage import Store, get_password
 from .terminal_stats import app as terminal_stats_app
 
 # Initialize Typer app and Rich console
@@ -61,7 +60,7 @@ def start(
         if settings.encryption_enabled:
             password = get_password()
 
-        store = ActivityStore(settings, password)
+        store = Store(settings, password)
         monitor = ActivityMonitor(settings, store, debug)
 
         loop = asyncio.new_event_loop()

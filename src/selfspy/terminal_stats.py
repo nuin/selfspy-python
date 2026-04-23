@@ -13,8 +13,8 @@ from rich.panel import Panel
 from rich.table import Table
 from sqlalchemy import and_, desc, func, select
 
-from .activity_store import ActivityStore
 from .config import Settings
+from .storage import Store
 from .terminal_tracker import TerminalCommand, TerminalSession
 
 app = typer.Typer(help="Terminal Activity Statistics")
@@ -66,7 +66,7 @@ def commands(
     """Show terminal command statistics"""
     try:
         settings = Settings(data_dir=data_dir if data_dir else Settings().data_dir)
-        store = ActivityStore(settings, password)
+        store = Store(settings, password)
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -97,7 +97,7 @@ def sessions(
     """Show terminal session statistics"""
     try:
         settings = Settings(data_dir=data_dir if data_dir else Settings().data_dir)
-        store = ActivityStore(settings, password)
+        store = Store(settings, password)
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -126,7 +126,7 @@ def projects(
     """Show project-based terminal activity"""
     try:
         settings = Settings(data_dir=data_dir if data_dir else Settings().data_dir)
-        store = ActivityStore(settings, password)
+        store = Store(settings, password)
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -156,7 +156,7 @@ def workflow(
     """Show development workflow patterns"""
     try:
         settings = Settings(data_dir=data_dir if data_dir else Settings().data_dir)
-        store = ActivityStore(settings, password)
+        store = Store(settings, password)
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -177,7 +177,7 @@ def workflow(
 
 
 async def _get_command_stats(
-    store: ActivityStore,
+    store: Store,
     days: int,
     directory: str | None = None,
     command_type: str | None = None,
@@ -285,7 +285,7 @@ async def _get_command_stats(
         }
 
 
-async def _get_session_stats(store: ActivityStore, days: int):
+async def _get_session_stats(store: Store, days: int):
     """Get terminal session statistics"""
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days)
@@ -345,7 +345,7 @@ async def _get_session_stats(store: ActivityStore, days: int):
         }
 
 
-async def _get_project_stats(store: ActivityStore, days: int):
+async def _get_project_stats(store: Store, days: int):
     """Get project-based statistics"""
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days)
@@ -399,9 +399,7 @@ async def _get_project_stats(store: ActivityStore, days: int):
         }
 
 
-async def _get_workflow_stats(
-    store: ActivityStore, days: int, directory: str | None = None
-):
+async def _get_workflow_stats(store: Store, days: int, directory: str | None = None):
     """Get workflow pattern statistics"""
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days)

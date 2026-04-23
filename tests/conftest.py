@@ -9,9 +9,8 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from selfspy.activity_store import ActivityStore
 from selfspy.config import Settings
-from selfspy.models import Base
+from selfspy.storage import Base, Store
 
 
 @pytest.fixture(scope="session")
@@ -45,7 +44,7 @@ def db_session(db_path):
 def activity_store(temp_dir):
     """Create a test activity store"""
     settings = Settings(data_dir=temp_dir, debug=True)
-    store = ActivityStore(settings, password="test")
+    store = Store(settings, password="test")
     try:
         yield store
     finally:

@@ -8,14 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.future import select
 from sqlalchemy.orm import sessionmaker
 
-from .config import Settings
+from ..config import Settings
 from .encryption import check_password, create_cipher
 from .models import Base, Click, Keys, Process, Session, Window
 
 logger = structlog.get_logger()
 
 
-class ActivityStore:
+class Store:
     """Asynchronous activity data store"""
 
     def __init__(self, settings: Settings, password: str | None = None):
