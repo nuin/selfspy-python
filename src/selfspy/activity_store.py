@@ -2,12 +2,7 @@
 Activity data storage implementation
 """
 
-import asyncio
-from pathlib import Path
-
 import structlog
-from alembic import command
-from alembic.config import Config
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.future import select
@@ -46,46 +41,14 @@ class ActivityStore:
         self.current_session_id: int | None = None
         self._initialized = False
 
-    def _run_migrations(self):
-        """Run Alembic migrations to upgrade database schema"""
-        try:
-            # Find the alembic.ini file
-            project_root = Path(__file__).parent.parent
-            alembic_cfg_path = project_root / "alembic.ini"
-
-            if not alembic_cfg_path.exists():
-                logger.warning("No alembic.ini found, skipping migrations")
-                return
-
-            # Configure Alembic
-            alembic_cfg = Config(str(alembic_cfg_path))
-            alembic_cfg.set_main_option(
-                "sqlalchemy.url",
-                str(self.settings.database_path).replace("sqlite:///", "sqlite:///"),
-            )
-
-            # Run migrations to head
-            command.upgrade(alembic_cfg, "head")
-            logger.info("Database migrations completed successfully")
-
-        except Exception as e:
-            logger.warning(f"Migration failed, will use create_all fallback: {e}")
-            # Fallback to create_all if migrations fail
-            raise
-
     async def initialize(self):
         """Initialize database and verify encryption password"""
         if self._initialized:
             return
 
-        # Try to run migrations first
-        try:
-            await asyncio.to_thread(self._run_migrations)
-        except Exception as e:
-            logger.info(f"Migrations not available or failed ({e}), using create_all")
-            # Fallback: Create tables if they don't exist
-            async with self.engine.begin() as conn:
-                await conn.run_sync(Base.metadata.create_all)
+        # Create tables if they don't exist (Alembic-managed in production via `selfspy migrate`)
+        async with self.engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
 
         # Verify encryption password if encryption is enabled
         if self.settings.encryption_enabled:
