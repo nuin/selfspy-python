@@ -3,22 +3,15 @@ Pytest configuration and fixtures
 """
 
 import os
-import sys
 import tempfile
-from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-# Add src to Python path
-src_path = str(Path(__file__).parent.parent / "src")
-if src_path not in sys.path:
-    sys.path.append(src_path)
-
-from src.activity_store import ActivityStore
-from src.config import Settings
-from src.models import Base
+from selfspy.activity_store import ActivityStore
+from selfspy.config import Settings
+from selfspy.models import Base
 
 
 @pytest.fixture(scope="session")

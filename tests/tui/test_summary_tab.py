@@ -1,8 +1,9 @@
 """Tests for the SummaryTab component."""
 
 import pytest
-from src.tui.tabs.summary import SummaryTab
 from textual.app import App, ComposeResult
+
+from selfspy.tui.tabs.summary import SummaryTab
 
 
 class SummaryTabTestApp(App):

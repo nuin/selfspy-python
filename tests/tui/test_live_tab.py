@@ -1,8 +1,9 @@
 """Tests for the LiveTab component."""
 
 import pytest
-from src.tui.tabs.live import LiveTab
 from textual.app import App, ComposeResult
+
+from selfspy.tui.tabs.live import LiveTab
 
 
 class LiveTabTestApp(App):

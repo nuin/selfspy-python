@@ -5,7 +5,6 @@ Renders a list of values as a horizontal sparkline using Unicode block
 characters for a compact visual representation of activity over time.
 """
 
-
 from rich.text import Text
 from textual.widget import Widget
 

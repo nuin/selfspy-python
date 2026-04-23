@@ -1,8 +1,9 @@
 """Tests for the AppsTab component."""
 
 import pytest
-from src.tui.tabs.apps import AppData, AppsTab
 from textual.app import App, ComposeResult
+
+from selfspy.tui.tabs.apps import AppData, AppsTab
 
 
 class AppsTabTestApp(App):

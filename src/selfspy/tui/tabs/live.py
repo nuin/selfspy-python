@@ -5,7 +5,6 @@ Displays current keystroke/click counts with sparklines showing
 recent activity patterns, current window focus, and session status.
 """
 
-
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal
 from textual.reactive import reactive

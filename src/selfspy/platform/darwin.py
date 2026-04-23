@@ -2,7 +2,6 @@
 macOS-specific window and process monitoring using PyObjC
 """
 
-
 import AppKit
 import Quartz
 from pynput import keyboard, mouse

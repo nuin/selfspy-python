@@ -53,9 +53,7 @@ class Process(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(index=True)
-    bundle_id: Mapped[str | None] = mapped_column(
-        index=True
-    )  # macOS bundle identifier
+    bundle_id: Mapped[str | None] = mapped_column(index=True)  # macOS bundle identifier
 
     # Relationships
     windows: Mapped[list["Window"]] = relationship(
@@ -80,9 +78,7 @@ class Window(TimestampMixin, Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(Text, index=True)
     process_id: Mapped[int] = mapped_column(ForeignKey("process.id"), index=True)
-    session_id: Mapped[int | None] = mapped_column(
-        ForeignKey("session.id"), index=True
-    )
+    session_id: Mapped[int | None] = mapped_column(ForeignKey("session.id"), index=True)
 
     # macOS specific fields
     bundle_id: Mapped[str | None] = mapped_column(index=True)

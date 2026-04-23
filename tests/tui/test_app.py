@@ -1,10 +1,11 @@
 """Tests for the main SelfspyApp."""
 
 import pytest
-from src.tui.app import SelfspyApp
-from src.tui.tabs.apps import AppsTab
-from src.tui.tabs.live import LiveTab
-from src.tui.tabs.summary import SummaryTab
+
+from selfspy.tui.app import SelfspyApp
+from selfspy.tui.tabs.apps import AppsTab
+from selfspy.tui.tabs.live import LiveTab
+from selfspy.tui.tabs.summary import SummaryTab
 
 
 class TestSelfspyApp:

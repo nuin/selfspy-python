@@ -1,7 +1,6 @@
 """Tests for the Sparkline widget."""
 
-
-from src.tui.widgets.sparkline import Sparkline
+from selfspy.tui.widgets.sparkline import Sparkline
 
 
 class TestSparkline:
