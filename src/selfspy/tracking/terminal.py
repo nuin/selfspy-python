@@ -24,8 +24,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from .storage import Store
-from .storage.models import Base, TimestampMixin
+from ..storage import Store
+from ..storage.models import Base, TimestampMixin
 
 logger = structlog.get_logger()
 

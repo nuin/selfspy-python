@@ -15,7 +15,7 @@ from sqlalchemy import and_, desc, func, select
 
 from .config import Settings
 from .storage import Store
-from .terminal_tracker import TerminalCommand, TerminalSession
+from .tracking.terminal import TerminalCommand, TerminalSession
 
 app = typer.Typer(help="Terminal Activity Statistics")
 console = Console()

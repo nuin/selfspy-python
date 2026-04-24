@@ -14,9 +14,9 @@ import structlog
 from pynput import mouse
 
 from .config import Settings
-from .platform.input_tracker import InputTracker
 from .storage import Store
-from .terminal_tracker import TerminalTracker
+from .tracking import TerminalTracker
+from .tracking.platform.input_tracker import InputTracker
 
 logger = structlog.get_logger()
 
@@ -105,7 +105,10 @@ class ActivityMonitor:
         """Initialize platform-specific trackers"""
         try:
             if platform.system() == "Darwin":
-                from .platform.darwin import MacOSInputTracker, MacOSWindowTracker
+                from .tracking.platform.darwin import (
+                    MacOSInputTracker,
+                    MacOSWindowTracker,
+                )
 
                 self.window_tracker = MacOSWindowTracker()
                 self.input_tracker = MacOSInputTracker(
@@ -116,7 +119,7 @@ class ActivityMonitor:
                     on_scroll=self._on_scroll,
                 )
             else:
-                from .platform.fallback import FallbackWindowTracker
+                from .tracking.platform.fallback import FallbackWindowTracker
 
                 self.window_tracker = FallbackWindowTracker()
                 self.input_tracker = InputTracker(
@@ -131,7 +134,7 @@ class ActivityMonitor:
                 )
         except Exception as e:
             logger.warning(f"Using fallback trackers: {e!s}")
-            from .platform.fallback import FallbackWindowTracker
+            from .tracking.platform.fallback import FallbackWindowTracker
 
             self.window_tracker = FallbackWindowTracker()
             self.input_tracker = InputTracker(

@@ -14,10 +14,10 @@ from rich.traceback import install
 from .activity_monitor import ActivityMonitor
 from .config import Settings
 from .enhanced_stats import app as enhanced_stats_app
-from .permissions import check_and_request_permissions
 from .stats import app as stats_app
 from .storage import Store, get_password
 from .terminal_stats import app as terminal_stats_app
+from .tracking import check_and_request_permissions
 
 # Initialize Typer app and Rich console
 app = typer.Typer(help="Selfspy - Monitor and analyze your computer activity")
