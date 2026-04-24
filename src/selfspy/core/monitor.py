@@ -14,14 +14,14 @@ import structlog
 from pynput import mouse
 
 from .config import Settings
-from .storage import Store
-from .tracking import TerminalTracker
-from .tracking.platform.input_tracker import InputTracker
+from ..storage import Store
+from ..tracking import TerminalTracker
+from ..tracking.platform.input_tracker import InputTracker
 
 logger = structlog.get_logger()
 
 
-class ActivityMonitor:
+class Monitor:
     """Activity monitor implementation"""
 
     def __init__(self, settings: Settings, store: "Store", debug: bool = False):
@@ -105,7 +105,7 @@ class ActivityMonitor:
         """Initialize platform-specific trackers"""
         try:
             if platform.system() == "Darwin":
-                from .tracking.platform.darwin import (
+                from ..tracking.platform.darwin import (
                     MacOSInputTracker,
                     MacOSWindowTracker,
                 )
@@ -119,7 +119,7 @@ class ActivityMonitor:
                     on_scroll=self._on_scroll,
                 )
             else:
-                from .tracking.platform.fallback import FallbackWindowTracker
+                from ..tracking.platform.fallback import FallbackWindowTracker
 
                 self.window_tracker = FallbackWindowTracker()
                 self.input_tracker = InputTracker(
@@ -134,7 +134,7 @@ class ActivityMonitor:
                 )
         except Exception as e:
             logger.warning(f"Using fallback trackers: {e!s}")
-            from .tracking.platform.fallback import FallbackWindowTracker
+            from ..tracking.platform.fallback import FallbackWindowTracker
 
             self.window_tracker = FallbackWindowTracker()
             self.input_tracker = InputTracker(
@@ -286,7 +286,7 @@ class ActivityMonitor:
 
             from sqlalchemy import select
 
-            from .storage import Session
+            from ..storage import Session
 
             yesterday = date.today() - timedelta(days=1)
             yesterday_start = datetime.combine(yesterday, datetime.min.time())
@@ -379,7 +379,7 @@ class ActivityMonitor:
 
     async def _run_with_tui(self):
         """Run with the Textual TUI (delegates to tui.runner)."""
-        from .tui.runner import run_tui
+        from ..tui.runner import run_tui
 
         await run_tui(self)
 

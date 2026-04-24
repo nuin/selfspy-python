@@ -5,7 +5,7 @@ Selfspy - A tool for monitoring and analyzing your computer activity
 import sys
 from pathlib import Path
 
-from .activity_monitor import ActivityMonitor
+from .core import Monitor
 from .storage import Click, Keys, Process, Store, Window
 
 __version__ = "1.0.0"
@@ -18,9 +18,9 @@ if src_path not in sys.path:
     sys.path.append(src_path)
 
 __all__ = [
-    "ActivityMonitor",
     "Click",
     "Keys",
+    "Monitor",
     "Process",
     "Store",
     "Window",

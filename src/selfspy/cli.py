@@ -11,8 +11,7 @@ import typer
 from rich.console import Console
 from rich.traceback import install
 
-from .activity_monitor import ActivityMonitor
-from .config import Settings
+from .core import Monitor, Settings
 from .enhanced_stats import app as enhanced_stats_app
 from .stats import app as stats_app
 from .storage import Store, get_password
@@ -61,7 +60,7 @@ def start(
             password = get_password()
 
         store = Store(settings, password)
-        monitor = ActivityMonitor(settings, store, debug)
+        monitor = Monitor(settings, store, debug)
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)

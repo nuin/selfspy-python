@@ -15,7 +15,7 @@ from rich.table import Table
 from rich.tree import Tree
 from sqlalchemy import distinct, extract, func, select
 
-from .config import Settings
+from .core import Settings
 from .storage import Click, Keys, Process, Store, Window
 
 app = typer.Typer(help="Enhanced Selfspy Statistics")

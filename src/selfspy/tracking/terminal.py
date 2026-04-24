@@ -441,7 +441,7 @@ async def start_terminal_tracking(store: Store):
 
 if __name__ == "__main__":
     # Test the terminal tracker
-    from .config import Settings
+    from ..core import Settings
 
     async def test_tracker():
         settings = Settings()

@@ -1,4 +1,4 @@
-"""TUI runner — drives the SelfspyApp from a running ActivityMonitor."""
+"""TUI runner — drives the SelfspyApp from a running Monitor."""
 
 from __future__ import annotations
 
@@ -11,12 +11,12 @@ from .app import SelfspyApp
 from .tabs.apps import AppData
 
 if TYPE_CHECKING:
-    from ..activity_monitor import ActivityMonitor
+    from ..core.monitor import Monitor
 
 logger = structlog.get_logger()
 
 
-async def run_tui(monitor: ActivityMonitor) -> None:
+async def run_tui(monitor: Monitor) -> None:
     """Run the Textual TUI bound to the given monitor."""
     app = SelfspyApp()
 
