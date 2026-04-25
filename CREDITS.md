@@ -40,7 +40,7 @@ While maintaining the spirit and core concepts of the original Selfspy, this mod
 - **Session tracking** with idle detection
 - **Historical comparison** (today vs yesterday)
 - **Productivity insights** and scoring
-- **Multiple statistics commands** (selfstats, selfviz, selfterminal)
+- **Unified statistics commands** (`selfspy stats`, `selfspy viz`, `selfspy terminal`)
 
 ### Platform Integration
 - **macOS native** window tracking with PyObjC

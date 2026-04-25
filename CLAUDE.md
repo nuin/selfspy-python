@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Selfspy is a comprehensive activity monitoring and analytics tool for tracking keyboard, mouse, window, and terminal activity. Built with modern Python (3.10+), async/await patterns, SQLAlchemy 2.0, and platform-specific integrations for macOS.
+Selfspy is a comprehensive activity monitoring and analytics tool for tracking keyboard, mouse, window, and terminal activity. Built with modern Python (3.12+), async/await patterns, SQLAlchemy 2.0, and platform-specific integrations for macOS.
 
 ## Development Commands
 
@@ -19,167 +19,185 @@ uv sync --group dev
 
 ### Running the Application
 ```bash
-# Start monitoring
-uv run selfspy start
+# Start headless monitoring (no TUI)
+uv run selfspy daemon
 
-# Start with debug logging
-uv run selfspy start --debug
+# Start interactive TUI
+uv run selfspy tui
+
+# With debug logging
+uv run selfspy daemon --debug
 
 # Check macOS permissions (required on macOS)
 uv run selfspy check-permissions
 
 # View basic statistics
-uv run selfstats
+uv run selfspy stats
 
 # View enhanced visualizations
-uv run selfviz enhanced
+uv run selfspy viz enhanced
 
 # View terminal command analytics
-uv run selfterminal stats
+uv run selfspy terminal commands
+
+# Run database migrations
+uv run selfspy migrate
 ```
 
 ### Testing
 ```bash
 # Run all tests with coverage
-pytest
+uv run pytest
 
 # Run specific test file
-pytest tests/test_models.py
+uv run pytest tests/test_models.py
 
 # Run with verbose output
-pytest -v
+uv run pytest -v
 
 # Run with coverage report
-pytest --cov=src --cov-report=html
+uv run pytest --cov=selfspy --cov-report=html
 ```
 
 ### Code Quality
 ```bash
 # Format code
-black src/ tests/
+uv run ruff format src/ tests/
 
-# Sort imports
-isort src/ tests/
+# Check formatting without modifying
+uv run ruff format --check src/ tests/
 
-# Run linter
-ruff check src/ tests/
+# Run linter (also handles import sorting)
+uv run ruff check src/ tests/
 
 # Type checking
-mypy src/
+uv run mypy src/
 ```
 
 ## Architecture
 
+### Package Layout
+
+The project lives under `src/selfspy/` and is split into layered subpackages:
+
+```
+src/selfspy/
+├── core/         # Settings, Monitor, lifecycle (orchestration)
+├── storage/     # SQLAlchemy models, Store, encryption, password
+├── tracking/   # Platform trackers, terminal tracker, permissions
+├── analytics/  # Pure read-only data aggregation (no I/O outside DB)
+├── tui/         # Textual-based terminal UI
+└── cli/         # Thin Typer wrappers around the above
+```
+
+### Layer Rules
+
+- `cli/` may import from any other layer (it is the presentation glue).
+- `analytics/` is pure: it reads from `Store` and returns plain dicts/dataclasses. **No Rich, no Typer, no console output.**
+- `core/` orchestrates `tracking/` and `storage/` but does not depend on `cli/` or `tui/`.
+- `tracking/` and `storage/` are self-contained and may depend only on `core.config`.
+- `tui/` reads state from `core.Monitor` but does not write to the DB directly.
+
 ### Core Components
 
-1. **ActivityMonitor** (`src/activity_monitor.py`): Main orchestrator that coordinates platform-specific trackers, manages the event loop, and displays live statistics.
-
-2. **ActivityStore** (`src/activity_store.py`): Async SQLAlchemy-based data layer handling all database operations. Uses aiosqlite for non-blocking I/O.
-
-3. **Platform Abstraction** (`src/platform/`):
+1. **Monitor** (`src/selfspy/core/monitor.py`): Coordinates platform-specific trackers, manages the event loop, and exposes live stats for the TUI.
+2. **lifecycle.run** (`src/selfspy/core/lifecycle.py`): Top-level entrypoint that wires Settings, Store, and Monitor together; exported as `run_monitor` from `selfspy.core`.
+3. **Store** (`src/selfspy/storage/store.py`): Async SQLAlchemy data layer using `aiosqlite` for non-blocking I/O.
+4. **Platform Abstraction** (`src/selfspy/tracking/platform/`):
    - `base.py`: Abstract base classes for window/input tracking
    - `darwin.py`: macOS-specific window and input tracking using PyObjC
    - `fallback.py`: Cross-platform fallback using pynput
-   - Platform detection happens at runtime in ActivityMonitor
-
-4. **Data Models** (`src/models.py`): SQLAlchemy 2.0 models using modern mapped_column syntax:
-   - `Session`: Monitoring sessions with start/end times, aggregate metrics (keystrokes, clicks, active/idle seconds)
-   - `Process`: Application processes with bundle IDs
-   - `Window`: Window information with geometry, screen data, and focus time tracking
-   - `Keys`: Encrypted keystroke data
-   - `Click`: Mouse clicks with movement tracking
-
-5. **Encryption** (`src/encryption.py`): Optional AES encryption for keystroke data using cryptography library and keyring for password storage.
-
-6. **TUI** (`src/tui/`): Textual-based terminal user interface integrated into ActivityMonitor. The `SelfspyApp` provides a tabbed interface (Live, Apps, Summary) for real-time monitoring feedback.
-   - `app.py`: `SelfspyApp` main tabbed application
-   - `tabs/live.py`: Real-time keystroke/click feedback with sparklines
-   - `tabs/apps.py`: Application activity breakdown (uses `AppData` dataclass)
-   - `tabs/summary.py`: Session statistics and comparisons
-   - `widgets/sparkline.py`: Reusable sparkline widget
-   - ActivityMonitor.start() accepts `use_tui` flag; `_run_with_tui()` launches the Textual app and pushes updates via an async update task
+   - `input_tracker.py`: Generic pynput-based input tracker
+5. **Data Models** (`src/selfspy/storage/models.py`): SQLAlchemy 2.0 models using modern `mapped_column` syntax: `Session`, `Process`, `Window`, `Keys`, `Click`.
+6. **Encryption** (`src/selfspy/storage/encryption.py`): Optional Fernet encryption for keystroke data with PBKDF2 key derivation.
+7. **TUI** (`src/selfspy/tui/`): Textual-based tabbed interface (Live, Apps, Summary). `runner.run_tui(monitor)` launches the app.
+8. **Analytics** (`src/selfspy/analytics/`): Pure aggregation — `stats`, `viz`, `terminal` modules. CLI wrappers in `cli/` add Rich rendering on top.
 
 ### Desktop Widgets (`desktop-app/`)
 
-Python/PyObjC implementations for macOS desktop widgets:
-- `simple_widget.py`: Standalone widget with simulated data
-- `selfspy_desktop_advanced.py`: Multi-widget system with real data integration
-- `widget_types.py`: Widget type definitions and customization
-- `data_integration.py`: Live data integration with Selfspy database
-- Uses native Cocoa APIs via PyObjC for always-on-top, draggable windows
-
-**Important**: Desktop widgets use `sys.path.append()` (not `insert()`) to prevent shadowing Python's stdlib `platform` module, and import using `from src.` prefix for explicit package imports
+Python/PyObjC implementations for macOS desktop widgets. **Currently broken after the Phase 1 package refactor** — these will be modernized in Phase 3 to import from `selfspy.*` instead of `src.*`.
 
 ### CLI Structure
 
-The project uses Typer for CLI with multiple command groups:
-- `selfspy`: Main app with `start`, `check-permissions` commands
-- `selfstats`: Basic statistics viewer
-- `selfviz`: Enhanced visualizations with Plotly
-- `selfterminal`: Terminal command analytics
+The project uses Typer with a single entrypoint and seven subcommands, each defined in its own module under `src/selfspy/cli/`:
 
-All CLI apps are defined in `[project.scripts]` in `pyproject.toml`.
+- `selfspy daemon` — start headless tracking (`cli/daemon.py`)
+- `selfspy tui` — start interactive TUI (`cli/tui.py`)
+- `selfspy stats` — basic activity stats (`cli/stats.py`)
+- `selfspy viz` — enhanced visualizations (`cli/viz.py`)
+- `selfspy terminal` — terminal command analytics (`cli/terminal.py`)
+- `selfspy migrate` — alembic migrations (`cli/migrate.py`)
+- `selfspy check-permissions` — verify macOS permissions (`cli/permissions.py`)
+
+`cli/main.py` mounts each as a sub-app via `app.add_typer(...)`. Only one entrypoint (`selfspy = "selfspy.cli.main:app"`) is declared in `pyproject.toml`.
 
 ## Key Technical Details
 
 ### Event Flow and Threading
 - Input events arrive from pynput callbacks on a separate thread
-- Events are added to an `asyncio.Queue` using `put_nowait()` (thread-safe, non-blocking)
+- Events are added to an `asyncio.Queue` via `loop.call_soon_threadsafe()` (thread-safe)
 - The main async loop periodically flushes the queue to the database
 - Buffer flush triggers: timeout (1 second), buffer size >50, or explicit flush
-- This pattern prevents blocking the pynput thread while ensuring async database writes
+- This pattern prevents blocking the pynput thread while ensuring async DB writes
 
 ### Async Patterns
-- ActivityStore uses `AsyncSession` for non-blocking database operations
-- ActivityMonitor runs in an asyncio event loop
+- `Store` uses `AsyncSession` for non-blocking DB operations
+- `Monitor` runs in an asyncio event loop
 - Platform trackers use callback-based APIs wrapped for async compatibility
-- Alembic migrations run via `asyncio.to_thread()` with fallback to `Base.metadata.create_all`
+- Schema creation falls back to `Base.metadata.create_all` if Alembic is unavailable
 
 ### macOS Integration
 - Requires Accessibility permissions (checked via `AXIsProcessTrusted()`)
 - Optional Screen Recording permissions for screen capture features
-- PyObjC frameworks (`pyobjc-framework-Quartz`, `pyobjc-framework-ApplicationServices`) for native macOS APIs
+- PyObjC frameworks (`pyobjc-framework-Quartz`, `pyobjc-framework-ApplicationServices`) for native APIs
 - Bundle ID tracking for app identification
 
 ### Database Schema
 - SQLite database stored in user's data directory (default: `~/.selfspy/`)
 - Comprehensive indexes for common queries (process name, window title, click coordinates, timestamps)
 - Foreign key relationships: Session ← Window, Process → Window → Keys/Clicks
-- TimestampMixin provides `created_at`/`updated_at` on all models
-- Alembic migrations in `alembic/` directory; falls back to `create_all` if unavailable
+- `TimestampMixin` provides `created_at`/`updated_at` on all models
+- Alembic migrations in `alembic/`; falls back to `create_all` if unavailable
 
 ### Session and Idle Tracking
-- Sessions track aggregate metrics: total_keystrokes, total_clicks, active_seconds, idle_seconds
+- Sessions track aggregate metrics: `total_keystrokes`, `total_clicks`, `active_seconds`, `idle_seconds`
 - Idle detection threshold: 3 minutes without input activity
-- Session metrics update in real-time via `update_session_metrics()` in ActivityStore
-- Windows can track focus_seconds for time spent with activity in each window
+- `Store.update_session_metrics()` updates atomically via SQL arithmetic
+- Windows track `focus_seconds` for time spent with activity in each window
 
 ### Configuration
-- `src/config.py` uses pydantic-settings for configuration management
-- Settings can be overridden via CLI flags or environment variables
-- Data directory, encryption settings, debug mode configurable
+- `src/selfspy/core/config.py` uses pydantic-settings for configuration
+- Settings can be overridden via CLI flags or `SELFSPY_*` environment variables
+- Data directory, encryption settings, debug mode all configurable
 
 ## Testing
 
-Tests use pytest with async support (`pytest-asyncio`). Test database is created in temp directory.
+Tests use pytest with async support (`pytest-asyncio`, asyncio_mode = "auto"). Test database lives in `tmp_path`.
 
 ```bash
 # Run single test
-pytest tests/test_models.py::test_function_name -v
+uv run pytest tests/storage/test_store.py::test_store_start_session_returns_id -v
 
 # Run with specific marker
-pytest -m "not slow"
+uv run pytest -m "not slow"
 ```
 
-Key fixtures in `tests/conftest.py`:
-- `db_session`: Sync SQLAlchemy session with automatic schema create/drop
-- `activity_store`: Async ActivityStore instance with test password
-- `temp_dir`: Session-scoped temporary directory
+Test layout mirrors `src/selfspy/`:
 
-Mock PyObjC dependencies when running on non-macOS platforms.
+```
+tests/
+├── analytics/   # Pure-data aggregation
+├── core/         # Settings, lifecycle
+├── storage/     # Store, encryption
+├── tracking/   # Permissions
+├── integration/ # Monitor → DB smoke tests
+└── tui/         # Textual app + tabs
+```
+
+All test imports use the `selfspy.*` package path (not `src.*`).
 
 ## Platform Support
 
 - **Primary**: macOS with full feature support (window tracking, input monitoring, bundle IDs)
 - **Fallback**: Other platforms use pynput-based tracking with reduced functionality
-- Platform detection at runtime allows same codebase across platforms
+- Platform detection at runtime via `platform.system()` in `Monitor._init_platform_trackers()`

@@ -75,10 +75,10 @@ uv sync --group dev --extra macos
 uv run selfspy check-permissions
 
 # Start monitoring
-uv run selfspy start
+uv run selfspy daemon
 
 # View statistics
-uv run selfviz enhanced
+uv run selfspy viz enhanced
 ```
 
 ## Key Features
@@ -188,7 +188,7 @@ Clean relational model with comprehensive indexing
 ### Debugging
 ```bash
 # Enable debug output
-uv run selfspy start --debug
+uv run selfspy daemon --debug
 
 # Check permissions
 uv run selfspy check-permissions
