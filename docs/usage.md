@@ -7,7 +7,7 @@
 Start monitoring with default settings:
 
 ```bash
-uv run selfspy start
+uv run selfspy daemon
 ```
 
 This will:
@@ -20,19 +20,19 @@ This will:
 
 ```bash
 # Start with debug logging
-uv run selfspy start --debug
+uv run selfspy daemon --debug
 
 # Use custom data directory
-uv run selfspy start --data-dir ~/my-activity-data
+uv run selfspy daemon --data-dir ~/my-activity-data
 
 # Disable text encryption (not recommended)
-uv run selfspy start --no-text
+uv run selfspy daemon --no-text
 
 # Skip permission checks (may fail on macOS)
-uv run selfspy start --force
+uv run selfspy daemon --force
 
 # Provide password directly
-uv run selfspy start --password "mypassword"
+uv run selfspy daemon --password "mypassword"
 ```
 
 ### Stopping Monitoring
@@ -43,39 +43,39 @@ Press `Ctrl+C` to stop monitoring gracefully.
 
 ### Basic Statistics
 
-View activity statistics with `selfstats`:
+View activity statistics with `selfspy stats`:
 
 ```bash
 # View overall statistics
-uv run selfstats
+uv run selfspy stats
 
 # Statistics for specific date range
-uv run selfstats --start 2024-01-01 --end 2024-01-31
+uv run selfspy stats --start 2024-01-01 --end 2024-01-31
 
 # Different output formats
-uv run selfstats --format json
-uv run selfstats --format csv
+uv run selfspy stats --format json
+uv run selfspy stats --format csv
 ```
 
 ### Enhanced Visualizations
 
-Use `selfviz` for rich visualizations:
+Use `selfspy viz` for rich visualizations:
 
 ```bash
 # Enhanced statistics view
-uv run selfviz enhanced
+uv run selfspy viz enhanced
 
 # Interactive web dashboard
-uv run selfviz dashboard
+uv run selfspy viz dashboard
 
 # Application usage breakdown
-uv run selfviz apps
+uv run selfspy viz apps
 
 # Time-based activity heatmap
-uv run selfviz heatmap
+uv run selfspy viz heatmap
 
 # Productivity analysis
-uv run selfviz productivity
+uv run selfspy viz productivity
 ```
 
 ### Terminal Analytics
@@ -84,16 +84,16 @@ Track terminal command usage:
 
 ```bash
 # View terminal command statistics
-uv run selfterminal stats
+uv run selfspy terminal stats
 
 # Most used commands
-uv run selfterminal top
+uv run selfspy terminal top
 
 # Command history with timing
-uv run selfterminal history
+uv run selfspy terminal history
 
 # Git workflow analysis
-uv run selfterminal git
+uv run selfspy terminal git
 ```
 
 ## Desktop Widgets
@@ -154,10 +154,10 @@ cp ~/.selfspy/selfspy.db ~/backups/selfspy-backup-$(date +%Y%m%d).db
 
 ```bash
 # Export to JSON
-uv run selfstats --format json > activity-export.json
+uv run selfspy stats --format json > activity-export.json
 
 # Export to CSV
-uv run selfstats --format csv > activity-export.csv
+uv run selfspy stats --format csv > activity-export.csv
 ```
 
 ### Clear Old Data
@@ -183,7 +183,7 @@ Keystroke data is encrypted by default using AES-256:
 
 ```bash
 # First run prompts for password
-uv run selfspy start
+uv run selfspy daemon
 
 # Password stored securely in system keychain
 # Future runs use stored password automatically
@@ -194,7 +194,7 @@ uv run selfspy start
 If you don't want to store keystroke text:
 
 ```bash
-uv run selfspy start --no-text
+uv run selfspy daemon --no-text
 ```
 
 This still tracks:
@@ -263,7 +263,7 @@ After=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=/path/to/uv run selfspy start
+ExecStart=/path/to/uv run selfspy daemon
 Restart=always
 
 [Install]
@@ -282,33 +282,33 @@ systemctl --user start selfspy
 
 ```bash
 # View today's activity
-uv run selfviz enhanced --start $(date +%Y-%m-%d)
+uv run selfspy viz enhanced --start $(date +%Y-%m-%d)
 
 # Check productivity metrics
-uv run selfviz productivity --start $(date +%Y-%m-%d)
+uv run selfspy viz productivity --start $(date +%Y-%m-%d)
 
 # Review terminal commands
-uv run selfterminal stats --start $(date +%Y-%m-%d)
+uv run selfspy terminal stats --start $(date +%Y-%m-%d)
 ```
 
 ### Weekly Reports
 
 ```bash
 # Last 7 days
-uv run selfstats --start $(date -v-7d +%Y-%m-%d) --format json > weekly-report.json
+uv run selfspy stats --start $(date -v-7d +%Y-%m-%d) --format json > weekly-report.json
 
 # Application time breakdown
-uv run selfviz apps --start $(date -v-7d +%Y-%m-%d)
+uv run selfspy viz apps --start $(date -v-7d +%Y-%m-%d)
 ```
 
 ### Development Workflow Analysis
 
 ```bash
 # Git command analysis
-uv run selfterminal git
+uv run selfspy terminal git
 
 # IDE/editor usage
-uv run selfviz apps | grep -E "(VS Code|PyCharm|vim)"
+uv run selfspy viz apps | grep -E "(VS Code|PyCharm|vim)"
 ```
 
 ## Tips and Best Practices

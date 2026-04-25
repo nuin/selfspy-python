@@ -109,7 +109,7 @@ uv sync --group dev
 uv run selfspy --help
 
 # Test monitoring (will request permissions on macOS)
-uv run selfspy start --debug
+uv run selfspy daemon --debug
 
 # Stop with Ctrl+C
 ```
@@ -142,12 +142,12 @@ If you want encrypted keystroke storage:
 
 1. First run will prompt for password:
 ```bash
-uv run selfspy start
+uv run selfspy daemon
 ```
 
 2. Or provide password via command line:
 ```bash
-uv run selfspy start --password "your-password"
+uv run selfspy daemon --password "your-password"
 ```
 
 Passwords are stored securely in your system keychain.
@@ -177,7 +177,7 @@ If you encounter database issues:
 rm -rf ~/.selfspy/
 
 # Start fresh
-uv run selfspy start
+uv run selfspy daemon
 ```
 
 ## Next Steps

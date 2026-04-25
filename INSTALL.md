@@ -105,7 +105,7 @@ selfspy --version
 selfspy check-permissions
 
 # Run a test session
-selfspy start --debug
+selfspy daemon --debug
 ```
 
 ## Upgrading

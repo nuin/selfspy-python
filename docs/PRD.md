@@ -131,9 +131,9 @@
 **Requirement**: System shall provide multiple CLI commands for viewing statistics with rich terminal output
 
 **Acceptance Criteria**:
-- `selfviz enhanced`: Shows productivity dashboard with charts and heatmaps
-- `selfviz timeline`: Displays chronological activity timeline
-- `selfviz live`: Real-time updating dashboard (5-second refresh)
+- `selfspy viz enhanced`: Shows productivity dashboard with charts and heatmaps
+- `selfspy viz timeline`: Displays chronological activity timeline
+- `selfspy viz live`: Real-time updating dashboard (5-second refresh)
 - Bar charts rendered using Rich library with colored blocks
 - Time-based heatmap shows activity by 6-hour blocks (Night/Morning/Day/Evening)
 - Productivity score calculated from keystrokes, windows, process count
@@ -274,7 +274,7 @@
 - **Privacy Controls**: Application exclusions, privacy mode, optional features
 - **Documentation**: Installation, usage, configuration, architecture, troubleshooting
 - **Database**: SQLite with async SQLAlchemy 2.0, proper indexes
-- **CLI Commands**: `selfspy start`, `selfviz`, `selfstats`, `selfterminal`
+- **CLI Commands**: single `selfspy` entrypoint with subcommands `daemon`, `tui`, `stats`, `viz`, `terminal`, `migrate`, `check-permissions`
 
 ### Out of Scope
 
@@ -315,7 +315,7 @@
 - Platform-specific trackers (macOS with PyObjC, cross-platform fallback)
 - SQLite database with SQLAlchemy 2.0 async
 - Encryption with Fernet and keychain integration
-- Basic CLI commands (`selfspy start`)
+- Basic CLI commands (`selfspy daemon`)
 
 **Success Gates**:
 - Monitoring runs continuously without crashes for 24+ hours
@@ -327,7 +327,7 @@
 **Status**: Complete and stable
 
 **Milestones**:
-- Rich CLI visualizations (`selfviz enhanced`, timeline, live)
+- Rich CLI visualizations (`selfspy viz enhanced`, timeline, live)
 - Statistical aggregations with proper SQL queries
 - Productivity scoring algorithm
 - Time-based heatmaps and bar charts
@@ -480,11 +480,14 @@ ActivityMonitor (Orchestrator)
 └── ActivityStore (Async SQLAlchemy)
     └── SQLite Database (encrypted keystrokes)
 
-CLI Layer
-├── selfspy (main daemon control)
-├── selfviz (rich visualizations)
-├── selfstats (basic statistics)
-└── selfterminal (terminal analytics)
+CLI Layer (single `selfspy` entrypoint)
+├── selfspy daemon         (headless monitoring)
+├── selfspy tui            (interactive TUI)
+├── selfspy stats          (basic statistics)
+├── selfspy viz            (rich visualizations)
+├── selfspy terminal       (terminal analytics)
+├── selfspy migrate        (alembic migrations)
+└── selfspy check-permissions
 
 Desktop Widgets (macOS)
 ├── PyObjC Implementation

@@ -3,7 +3,7 @@
 import pytest
 from textual.app import App, ComposeResult
 
-from src.tui.tabs.summary import SummaryTab
+from selfspy.tui.tabs.summary import SummaryTab
 
 
 class SummaryTabTestApp(App):

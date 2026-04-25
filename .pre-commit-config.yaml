@@ -1,0 +1,21 @@
+# Legacy paths excluded until Phase 3 modernization:
+#   - desktop-app/ (PyObjC widgets, broken since package refactor)
+#   - alembic/ (autogen migrations + Mako templates)
+exclude: ^(desktop-app|alembic)/
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format

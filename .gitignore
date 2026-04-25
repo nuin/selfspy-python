@@ -41,7 +41,12 @@ venv.bak/
 .pytest_cache/
 .coverage
 htmlcov/
+coverage.xml
 .tox/
+
+# Tooling caches
+.ruff_cache/
+.mypy_cache/
 
 # Selfspy data
 .selfspy/

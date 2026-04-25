@@ -24,7 +24,7 @@ Monitoring may not work correctly without proper permissions
 **Still not working?**
 ```bash
 # Try running with debug mode to see detailed errors
-uv run selfspy start --debug
+uv run selfspy daemon --debug
 
 # Check if Python has permissions instead
 # Add Python executable to Accessibility in System Settings
@@ -48,7 +48,7 @@ which python
 **Don't need screenshots?**
 ```bash
 export SELFSPY_ENABLE_SCREENSHOTS=false
-uv run selfspy start
+uv run selfspy daemon
 ```
 
 ### Installation Issues
@@ -89,7 +89,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 pip install selfspy
 
 # Then run with python -m
-python -m selfspy start
+python -m selfspy daemon
 ```
 
 ### Database Issues
@@ -115,7 +115,7 @@ lsof ~/.selfspy/selfspy.db
 # Last resort: backup and recreate
 cp ~/.selfspy/selfspy.db ~/.selfspy/selfspy.db.backup
 rm ~/.selfspy/selfspy.db
-uv run selfspy start
+uv run selfspy daemon
 ```
 
 #### Problem: Database corruption
@@ -137,7 +137,7 @@ mv recovered.db ~/.selfspy/selfspy.db
 # If not recoverable, start fresh (after backup)
 cp ~/.selfspy/selfspy.db ~/.selfspy/selfspy.db.broken
 rm ~/.selfspy/selfspy.db
-uv run selfspy start
+uv run selfspy daemon
 ```
 
 #### Problem: Database too large
@@ -195,7 +195,7 @@ mv ~/.selfspy/selfspy.db ~/.selfspy/selfspy.db.old
 rm ~/.selfspy/password.digest
 
 # Start with new password
-uv run selfspy start
+uv run selfspy daemon
 ```
 
 **Prevention:**
@@ -219,7 +219,7 @@ security unlock-keychain ~/Library/Keychains/login.keychain-db
 
 # Or provide password via environment
 export SELFSPY_PASSWORD="your-password"
-uv run selfspy start
+uv run selfspy daemon
 ```
 
 ### Monitoring Issues
@@ -236,14 +236,14 @@ uv run selfspy start
 uv run selfspy check-permissions
 
 # 2. Run with debug mode
-uv run selfspy start --debug
+uv run selfspy daemon --debug
 
 # 3. Check excluded applications
 echo $SELFSPY_PRIVACY_EXCLUDED_APPS
 
 # 4. Try fallback mode
 export SELFSPY_PLATFORM_MODULE="fallback"
-uv run selfspy start
+uv run selfspy daemon
 ```
 
 #### Problem: High CPU usage
@@ -284,7 +284,7 @@ du -h ~/.selfspy/selfspy.db
 export SELFSPY_MOUSE_TRACKING_ENABLED=true
 
 # Run with debug
-uv run selfspy start --debug
+uv run selfspy daemon --debug
 
 # Check for permission issues
 uv run selfspy check-permissions
@@ -339,7 +339,7 @@ cd desktop-app
 #### Problem: Terminal commands not tracked
 
 **Symptoms:**
-- `selfterminal stats` shows no data
+- `selfspy terminal stats` shows no data
 - Regular monitoring works
 
 **Solution:**
@@ -351,7 +351,7 @@ cd desktop-app
 ps aux | grep terminal_tracker
 
 # Run selfspy with debug to see terminal detection
-uv run selfspy start --debug
+uv run selfspy daemon --debug
 ```
 
 ### Platform-Specific Issues
@@ -415,13 +415,13 @@ export SELFSPY_TRACK_WINDOW_GEOMETRY=false
 
 ```bash
 # Use date ranges
-uv run selfstats --start 2024-01-01 --end 2024-01-31
+uv run selfspy stats --start 2024-01-01 --end 2024-01-31
 
 # Limit to specific apps
-uv run selfviz apps --filter "Code|Terminal"
+uv run selfspy viz apps --filter "Code|Terminal"
 
 # Use JSON format for processing (faster than text)
-uv run selfstats --format json
+uv run selfspy stats --format json
 ```
 
 ## Getting Help
@@ -432,7 +432,7 @@ uv run selfstats --format json
 # Run with maximum verbosity
 export SELFSPY_DEBUG=true
 export SELFSPY_DEBUG_LOGGING_ENABLED=true
-uv run selfspy start --debug 2>&1 | tee selfspy-debug.log
+uv run selfspy daemon --debug 2>&1 | tee selfspy-debug.log
 ```
 
 ### Check System Information

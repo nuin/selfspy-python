@@ -40,11 +40,11 @@ Selfspy is built with modern Python practices using async/await, SQLAlchemy 2.0,
 - Signal handling for graceful shutdown
 
 **Main Commands:**
-- `selfspy start`: Begin monitoring
+- `selfspy daemon`: Begin monitoring
 - `selfspy check-permissions`: Verify macOS permissions
-- `selfstats`: View statistics
-- `selfviz`: Enhanced visualizations
-- `selfterminal`: Terminal analytics
+- `selfspy stats`: View statistics
+- `selfspy viz`: Enhanced visualizations
+- `selfspy terminal`: Terminal analytics
 
 **Entry Point:**
 ```python
@@ -309,7 +309,7 @@ class Settings(BaseSettings):
 ### Query Flow (Statistics)
 
 ```
-1. User runs: selfstats/selfviz
+1. User runs: selfspy stats / selfspy viz
 2. Create read-only ActivityStore
 3. Query SQLAlchemy models
 4. Decrypt keystroke data (if needed)
@@ -474,7 +474,7 @@ class ActivityWidget(NSWindow):
 ```
 User Login
 └── LaunchAgent/systemd service
-    └── selfspy start
+    └── selfspy daemon
         ├── Check permissions
         ├── Load configuration
         ├── Initialize database
@@ -485,7 +485,7 @@ User Login
 
 ```
 User Session
-├── selfspy start (background)
+├── selfspy daemon (background)
 └── selfspy_desktop_advanced.py (foreground)
     └── Queries same database
 ```

@@ -10,16 +10,16 @@ Most common settings can be set via CLI flags:
 
 ```bash
 # Custom data directory
-uv run selfspy start --data-dir ~/my-selfspy-data
+uv run selfspy daemon --data-dir ~/my-selfspy-data
 
 # Enable debug logging
-uv run selfspy start --debug
+uv run selfspy daemon --debug
 
 # Disable text encryption
-uv run selfspy start --no-text
+uv run selfspy daemon --no-text
 
 # Provide password
-uv run selfspy start --password "mypassword"
+uv run selfspy daemon --password "mypassword"
 ```
 
 ### 2. Environment Variables
@@ -42,7 +42,7 @@ export SELFSPY_SCREENSHOT_INTERVAL=600
 export SELFSPY_MAX_DAILY_SCREENSHOTS=50
 
 # Run selfspy
-uv run selfspy start
+uv run selfspy daemon
 ```
 
 ### 3. .env File

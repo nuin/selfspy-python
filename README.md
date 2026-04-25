@@ -40,16 +40,16 @@ uv tool install selfspy --with selfspy[macos]
 
 ```bash
 # Start monitoring with live TUI
-selfspy start
+selfspy daemon
 
 # View enhanced statistics
-selfstats summary --days 7
+selfspy stats summary --days 7
 
 # View visualizations
-selfviz enhanced
+selfspy viz enhanced
 
 # Check terminal activity
-selfterminal stats
+selfspy terminal stats
 ```
 
 See [INSTALL.md](INSTALL.md) for detailed installation instructions.

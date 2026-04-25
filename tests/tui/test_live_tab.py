@@ -3,7 +3,7 @@
 import pytest
 from textual.app import App, ComposeResult
 
-from src.tui.tabs.live import LiveTab
+from selfspy.tui.tabs.live import LiveTab
 
 
 class LiveTabTestApp(App):
@@ -31,8 +31,10 @@ class TestLiveTab:
         async with app.run_test() as pilot:
             live_tab = app.query_one(LiveTab)
             # Should have a label for keystrokes
-            assert "Keystrokes" in live_tab.render().plain or \
-                   app.query("Label").first() is not None
+            assert (
+                "Keystrokes" in live_tab.render().plain
+                or app.query("Label").first() is not None
+            )
 
     @pytest.mark.asyncio
     async def test_live_tab_update_metrics(self):

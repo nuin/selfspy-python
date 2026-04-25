@@ -3,22 +3,14 @@ Pytest configuration and fixtures
 """
 
 import os
-import sys
 import tempfile
-from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-# Add src to Python path
-src_path = str(Path(__file__).parent.parent / "src")
-if src_path not in sys.path:
-    sys.path.append(src_path)
-
-from src.activity_store import ActivityStore
-from src.config import Settings
-from src.models import Base
+from selfspy.core import Settings
+from selfspy.storage import Base, Store
 
 
 @pytest.fixture(scope="session")
@@ -52,7 +44,7 @@ def db_session(db_path):
 def activity_store(temp_dir):
     """Create a test activity store"""
     settings = Settings(data_dir=temp_dir, debug=True)
-    store = ActivityStore(settings, password="test")
+    store = Store(settings, password="test")
     try:
         yield store
     finally:

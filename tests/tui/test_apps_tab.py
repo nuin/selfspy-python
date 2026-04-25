@@ -3,7 +3,7 @@
 import pytest
 from textual.app import App, ComposeResult
 
-from src.tui.tabs.apps import AppsTab, AppData
+from selfspy.tui.tabs.apps import AppData, AppsTab
 
 
 class AppsTabTestApp(App):
@@ -49,6 +49,7 @@ class TestAppsTab:
             apps_tab = app.query_one(AppsTab)
             # Should have a DataTable
             from textual.widgets import DataTable
+
             table = apps_tab.query_one(DataTable)
             assert table is not None
 
@@ -58,10 +59,12 @@ class TestAppsTab:
         app = AppsTabTestApp()
         async with app.run_test() as pilot:
             apps_tab = app.query_one(AppsTab)
-            apps_tab.update_apps([
-                AppData("VS Code", 500, 100, 62.5),
-                AppData("Firefox", 200, 50, 25.0),
-            ])
+            apps_tab.update_apps(
+                [
+                    AppData("VS Code", 500, 100, 62.5),
+                    AppData("Firefox", 200, 50, 25.0),
+                ]
+            )
             assert len(apps_tab.apps) == 2
 
     @pytest.mark.asyncio
@@ -70,10 +73,12 @@ class TestAppsTab:
         app = AppsTabTestApp()
         async with app.run_test() as pilot:
             apps_tab = app.query_one(AppsTab)
-            apps_tab.update_apps([
-                AppData("Low Activity", 50, 10, 10.0),
-                AppData("High Activity", 500, 100, 80.0),
-                AppData("Medium Activity", 200, 50, 40.0),
-            ])
+            apps_tab.update_apps(
+                [
+                    AppData("Low Activity", 50, 10, 10.0),
+                    AppData("High Activity", 500, 100, 80.0),
+                    AppData("Medium Activity", 200, 50, 40.0),
+                ]
+            )
             # First app should be highest activity
             assert apps_tab.apps[0].name == "High Activity"
