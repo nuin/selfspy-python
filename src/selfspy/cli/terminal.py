@@ -1,6 +1,4 @@
-"""
-Terminal-specific statistics and visualizations
-"""
+"""selfspy terminal — terminal command analytics."""
 
 import asyncio
 from pathlib import Path
@@ -10,20 +8,14 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from .analytics.terminal import (
-    get_command_stats as _get_command_stats,
+from ..analytics.terminal import (
+    get_command_stats,
+    get_project_stats,
+    get_session_stats,
+    get_workflow_stats,
 )
-from .analytics.terminal import (
-    get_project_stats as _get_project_stats,
-)
-from .analytics.terminal import (
-    get_session_stats as _get_session_stats,
-)
-from .analytics.terminal import (
-    get_workflow_stats as _get_workflow_stats,
-)
-from .core import Settings
-from .storage import Store
+from ..core import Settings
+from ..storage import Store
 
 app = typer.Typer(help="Terminal Activity Statistics")
 console = Console()
@@ -32,7 +24,7 @@ console = Console()
 def create_command_frequency_chart(
     commands: list[tuple[str, int]], title: str = "Command Frequency"
 ) -> Table:
-    """Create a frequency chart for terminal commands"""
+    """Create a frequency chart for terminal commands."""
     if not commands:
         return Table()
 
@@ -44,12 +36,11 @@ def create_command_frequency_chart(
     max_count = max(item[1] for item in commands) if commands else 1
     max_width = 30
 
-    for command, count in commands[:15]:  # Top 15
+    for command, count in commands[:15]:
         bar_length = int((count / max_count) * max_width) if max_count > 0 else 0
         bar = "█" * bar_length + "░" * (max_width - bar_length)
         percentage = (count / max_count) * 100 if max_count > 0 else 0
 
-        # Truncate long commands
         display_cmd = command[:18] + ".." if len(command) > 20 else command
 
         table.add_row(
@@ -71,7 +62,7 @@ def commands(
         None, "--password", "-p", help="Password for encrypted data"
     ),
 ):
-    """Show terminal command statistics"""
+    """Show terminal command statistics."""
     try:
         settings = Settings(data_dir=data_dir if data_dir else Settings().data_dir)
         store = Store(settings, password)
@@ -82,7 +73,7 @@ def commands(
         try:
             with console.status("[bold green]Analyzing terminal commands..."):
                 stats = loop.run_until_complete(
-                    _get_command_stats(store, days, directory, command_type)
+                    get_command_stats(store, days, directory, command_type)
                 )
 
             _display_command_stats(stats, days, directory, command_type)
@@ -91,7 +82,7 @@ def commands(
 
     except Exception as e:
         console.print(f"[red]Error: {e!s}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command()
@@ -102,7 +93,7 @@ def sessions(
         None, "--password", "-p", help="Password for encrypted data"
     ),
 ):
-    """Show terminal session statistics"""
+    """Show terminal session statistics."""
     try:
         settings = Settings(data_dir=data_dir if data_dir else Settings().data_dir)
         store = Store(settings, password)
@@ -112,7 +103,7 @@ def sessions(
 
         try:
             with console.status("[bold green]Analyzing terminal sessions..."):
-                stats = loop.run_until_complete(_get_session_stats(store, days))
+                stats = loop.run_until_complete(get_session_stats(store, days))
 
             _display_session_stats(stats, days)
         finally:
@@ -120,7 +111,7 @@ def sessions(
 
     except Exception as e:
         console.print(f"[red]Error: {e!s}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command()
@@ -131,7 +122,7 @@ def projects(
         None, "--password", "-p", help="Password for encrypted data"
     ),
 ):
-    """Show project-based terminal activity"""
+    """Show project-based terminal activity."""
     try:
         settings = Settings(data_dir=data_dir if data_dir else Settings().data_dir)
         store = Store(settings, password)
@@ -141,7 +132,7 @@ def projects(
 
         try:
             with console.status("[bold green]Analyzing project activity..."):
-                stats = loop.run_until_complete(_get_project_stats(store, days))
+                stats = loop.run_until_complete(get_project_stats(store, days))
 
             _display_project_stats(stats, days)
         finally:
@@ -149,7 +140,7 @@ def projects(
 
     except Exception as e:
         console.print(f"[red]Error: {e!s}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command()
@@ -161,7 +152,7 @@ def workflow(
         None, "--password", "-p", help="Password for encrypted data"
     ),
 ):
-    """Show development workflow patterns"""
+    """Show development workflow patterns."""
     try:
         settings = Settings(data_dir=data_dir if data_dir else Settings().data_dir)
         store = Store(settings, password)
@@ -172,7 +163,7 @@ def workflow(
         try:
             with console.status("[bold green]Analyzing workflow patterns..."):
                 stats = loop.run_until_complete(
-                    _get_workflow_stats(store, days, directory)
+                    get_workflow_stats(store, days, directory)
                 )
 
             _display_workflow_stats(stats, days, directory)
@@ -181,15 +172,13 @@ def workflow(
 
     except Exception as e:
         console.print(f"[red]Error: {e!s}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 def _display_command_stats(
     stats: dict, days: int, directory: str | None, command_type: str | None
 ):
-    """Display terminal command statistics"""
-
-    # Header
+    """Display terminal command statistics."""
     filters = []
     if directory:
         filters.append(f"Directory: {directory}")
@@ -206,7 +195,6 @@ def _display_command_stats(
     console.print(header)
     console.print()
 
-    # Overview stats
     overview_table = Table(title="📊 Overview", box=None)
     overview_table.add_column("Metric", style="cyan")
     overview_table.add_column("Value", style="green", justify="right")
@@ -223,7 +211,6 @@ def _display_command_stats(
     console.print(overview_table)
     console.print()
 
-    # Most frequent commands
     if stats["frequent_commands"]:
         cmd_chart = create_command_frequency_chart(
             stats["frequent_commands"], "🏆 Most Frequent Commands"
@@ -231,7 +218,6 @@ def _display_command_stats(
         console.print(cmd_chart)
         console.print()
 
-    # Command types
     if stats["command_types"]:
         type_table = Table(title="🔧 Command Types")
         type_table.add_column("Type", style="cyan")
@@ -246,15 +232,13 @@ def _display_command_stats(
         console.print(type_table)
         console.print()
 
-    # Active directories
     if stats["active_directories"]:
         dir_table = Table(title="📁 Most Active Directories")
         dir_table.add_column("Directory", style="cyan")
         dir_table.add_column("Commands", justify="right", style="green")
 
-        for directory, count in stats["active_directories"]:
-            # Shorten long paths
-            display_dir = directory
+        for directory_name, count in stats["active_directories"]:
+            display_dir = directory_name
             if len(display_dir) > 60:
                 display_dir = "..." + display_dir[-57:]
             dir_table.add_row(display_dir, f"{count:,}")
@@ -263,8 +247,7 @@ def _display_command_stats(
 
 
 def _display_session_stats(stats: dict, days: int):
-    """Display terminal session statistics"""
-
+    """Display terminal session statistics."""
     header = Panel(
         f"[bold green]🖥️  Terminal Sessions Analysis[/bold green]\n"
         f"[dim]Analysis Period: {days} day{'s' if days != 1 else ''}[/dim]",
@@ -273,38 +256,35 @@ def _display_session_stats(stats: dict, days: int):
     console.print(header)
     console.print()
 
-    # Daily activity
     if stats["daily_activity"]:
         daily_table = Table(title="📅 Daily Activity")
         daily_table.add_column("Date", style="cyan")
         daily_table.add_column("Sessions", justify="right", style="blue")
         daily_table.add_column("Commands", justify="right", style="green")
 
-        for date, sessions, commands in stats["daily_activity"]:
-            daily_table.add_row(str(date), str(sessions), str(commands))
+        for date, sessions_count, commands_count in stats["daily_activity"]:
+            daily_table.add_row(str(date), str(sessions_count), str(commands_count))
 
         console.print(daily_table)
         console.print()
 
-    # Active directories
     if stats["active_directories"]:
         dir_table = Table(title="📁 Most Active Project Directories")
         dir_table.add_column("Directory", style="cyan")
         dir_table.add_column("Sessions", justify="right", style="blue")
         dir_table.add_column("Commands", justify="right", style="green")
 
-        for directory, sessions, commands in stats["active_directories"]:
+        for directory, sessions_count, commands_count in stats["active_directories"]:
             display_dir = directory
             if len(display_dir) > 50:
                 display_dir = "..." + display_dir[-47:]
-            dir_table.add_row(display_dir, str(sessions), str(commands))
+            dir_table.add_row(display_dir, str(sessions_count), str(commands_count))
 
         console.print(dir_table)
 
 
 def _display_project_stats(stats: dict, days: int):
-    """Display project-based statistics"""
-
+    """Display project-based statistics."""
     header = Panel(
         f"[bold magenta]🚀 Project Development Analysis[/bold magenta]\n"
         f"[dim]Analysis Period: {days} day{'s' if days != 1 else ''}[/dim]",
@@ -313,20 +293,20 @@ def _display_project_stats(stats: dict, days: int):
     console.print(header)
     console.print()
 
-    # Project types
     if stats["project_types"]:
         project_table = Table(title="🛠️ Project Types")
         project_table.add_column("Language/Type", style="cyan")
         project_table.add_column("Commands", justify="right", style="green")
         project_table.add_column("Directories", justify="right", style="blue")
 
-        for project_type, commands, directories in stats["project_types"]:
-            project_table.add_row(project_type, f"{commands:,}", str(directories))
+        for project_type, commands_count, directories_count in stats["project_types"]:
+            project_table.add_row(
+                project_type, f"{commands_count:,}", str(directories_count)
+            )
 
         console.print(project_table)
         console.print()
 
-    # Git branches
     if stats["git_branches"]:
         git_table = Table(title="🌳 Most Active Git Branches")
         git_table.add_column("Branch", style="cyan")
@@ -339,8 +319,7 @@ def _display_project_stats(stats: dict, days: int):
 
 
 def _display_workflow_stats(stats: dict, days: int, directory: str | None):
-    """Display workflow pattern statistics"""
-
+    """Display workflow pattern statistics."""
     filter_text = f" in {directory}" if directory else ""
 
     header = Panel(
@@ -351,7 +330,6 @@ def _display_workflow_stats(stats: dict, days: int, directory: str | None):
     console.print(header)
     console.print()
 
-    # Command patterns
     if stats["command_patterns"]:
         pattern_table = Table(title="🔄 Common Command Sequences")
         pattern_table.add_column("Pattern", style="cyan")
@@ -363,7 +341,6 @@ def _display_workflow_stats(stats: dict, days: int, directory: str | None):
         console.print(pattern_table)
         console.print()
 
-    # Dangerous commands
     if stats["dangerous_commands"]:
         danger_table = Table(title="⚠️ Recent Dangerous Commands", show_header=True)
         danger_table.add_column("When", style="dim")
@@ -373,16 +350,12 @@ def _display_workflow_stats(stats: dict, days: int, directory: str | None):
         for cmd in stats["dangerous_commands"]:
             when = cmd.created_at.strftime("%m/%d %H:%M")
             command = cmd.command[:60] + "..." if len(cmd.command) > 60 else cmd.command
-            directory = (
+            directory_name = (
                 cmd.working_directory.split("/")[-1]
                 if cmd.working_directory
                 else "unknown"
             )
 
-            danger_table.add_row(when, command, directory)
+            danger_table.add_row(when, command, directory_name)
 
         console.print(danger_table)
-
-
-if __name__ == "__main__":
-    app()

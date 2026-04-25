@@ -86,10 +86,7 @@ dev = [
 ]
 
 [project.scripts]
-selfspy = "selfspy.cli:app"
-selfstats = "selfspy.stats:app"
-selfviz = "selfspy.enhanced_stats:app"
-selfterminal = "selfspy.terminal_stats:app"
+selfspy = "selfspy.cli.main:app"
 
 [build-system]
 requires = ["hatchling"]

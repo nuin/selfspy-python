@@ -1,6 +1,4 @@
-"""
-Enhanced statistics and visualization module for Selfspy with rich visuals
-"""
+"""selfspy viz — enhanced statistics with rich visualizations."""
 
 import asyncio
 from datetime import datetime
@@ -14,17 +12,9 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.tree import Tree
 
-from .analytics.viz import (
-    get_enhanced_stats as _get_enhanced_stats,
-)
-from .analytics.viz import (
-    get_hourly_stats as _get_hourly_stats,
-)
-from .analytics.viz import (
-    get_timeline_data as _get_timeline_data,
-)
-from .core import Settings
-from .storage import Store
+from ..analytics.viz import get_enhanced_stats, get_hourly_stats, get_timeline_data
+from ..core import Settings
+from ..storage import Store
 
 app = typer.Typer(help="Enhanced Selfspy Statistics")
 console = Console()
@@ -33,7 +23,7 @@ console = Console()
 def create_bar_chart(
     data: list[tuple[str, int]], max_width: int = 40, title: str = ""
 ) -> Table:
-    """Create a horizontal bar chart using Rich"""
+    """Create a horizontal bar chart using Rich."""
     if not data:
         return Table()
 
@@ -57,17 +47,15 @@ def create_bar_chart(
 
 
 def create_time_heatmap(hourly_data: dict[int, int]) -> Table:
-    """Create a time-based heatmap"""
+    """Create a time-based heatmap."""
     table = Table(title="⏰ Activity Heatmap (24h)", box=None)
 
-    # Create time blocks
     time_blocks = ["🌙 Night", "🌅 Morning", "☀️  Day", "🌆 Evening"]
     hours_per_block = 6
 
-    for i, block_name in enumerate(time_blocks):
+    for block_name in time_blocks:
         table.add_column(block_name, justify="center")
 
-    # Calculate activity levels for each block
     block_activities = []
     for block in range(4):
         start_hour = block * hours_per_block
@@ -77,7 +65,6 @@ def create_time_heatmap(hourly_data: dict[int, int]) -> Table:
 
     max_activity = max(block_activities) if block_activities else 1
 
-    # Create visual representation
     intensity_chars = ["⬛", "🟫", "🟨", "🟩", "🟢"]
     row_data = []
 
@@ -91,15 +78,13 @@ def create_time_heatmap(hourly_data: dict[int, int]) -> Table:
 
 
 def calculate_productivity_score(stats: dict) -> tuple[int, str, str]:
-    """Calculate a productivity score based on activity patterns"""
+    """Calculate a productivity score based on activity patterns."""
     keystrokes = stats["totals"].total_keystrokes
     windows = stats["totals"].total_windows
     processes = len(stats["processes"])
 
-    # Basic scoring algorithm
     base_score = min(100, (keystrokes // 50) + (windows * 2) + (processes * 5))
 
-    # Determine productivity level
     if base_score >= 80:
         level = "🚀 Highly Productive"
         color = "green"
@@ -120,23 +105,30 @@ def calculate_productivity_score(stats: dict) -> tuple[int, str, str]:
 
 
 def create_insights_panel(stats: dict, days: int) -> list[Panel]:
-    """Generate insights about user activity"""
+    """Generate insights about user activity."""
     panels = []
 
-    # Productivity insights
     score, level, color = calculate_productivity_score(stats)
-    productivity_text = f"Productivity Score: [bold {color}]{score}/100[/bold {color}]\nLevel: [bold]{level}[/bold]"
+    productivity_text = (
+        f"Productivity Score: [bold {color}]{score}/100[/bold {color}]\n"
+        f"Level: [bold]{level}[/bold]"
+    )
 
-    # Activity insights
     keystrokes_per_day = stats["totals"].total_keystrokes // max(days, 1)
     windows_per_day = stats["totals"].total_windows // max(days, 1)
 
-    activity_text = f"Daily Averages:\n📝 {keystrokes_per_day:,} keystrokes/day\n🪟 {windows_per_day:,} windows/day"
+    activity_text = (
+        f"Daily Averages:\n"
+        f"📝 {keystrokes_per_day:,} keystrokes/day\n"
+        f"🪟 {windows_per_day:,} windows/day"
+    )
 
-    # Top app insight
     if stats["processes"]:
         top_app = max(stats["processes"], key=lambda x: x.keystroke_count or 0)
-        top_app_text = f"Most Active App:\n🥇 [bold cyan]{top_app.name}[/bold cyan]\n📊 {top_app.keystroke_count:,} keystrokes"
+        top_app_text = (
+            f"Most Active App:\n🥇 [bold cyan]{top_app.name}[/bold cyan]\n"
+            f"📊 {top_app.keystroke_count:,} keystrokes"
+        )
     else:
         top_app_text = "No application data available"
 
@@ -159,7 +151,7 @@ def enhanced(
         None, "--password", "-p", help="Password for encrypted data"
     ),
 ):
-    """Show enhanced activity statistics with rich visualizations"""
+    """Show enhanced activity statistics with rich visualizations."""
     try:
         settings = Settings(data_dir=data_dir if data_dir else Settings().data_dir)
         store = Store(settings, password)
@@ -169,8 +161,8 @@ def enhanced(
 
         try:
             with console.status("[bold green]Analyzing your activity data..."):
-                stats = loop.run_until_complete(_get_enhanced_stats(store, days))
-                hourly_data = loop.run_until_complete(_get_hourly_stats(store, days))
+                stats = loop.run_until_complete(get_enhanced_stats(store, days))
+                hourly_data = loop.run_until_complete(get_hourly_stats(store, days))
 
             _display_enhanced_stats(stats, hourly_data, days)
         finally:
@@ -178,7 +170,7 @@ def enhanced(
 
     except Exception as e:
         console.print(f"[red]Error: {e!s}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command()
@@ -189,7 +181,7 @@ def timeline(
         None, "--password", "-p", help="Password for encrypted data"
     ),
 ):
-    """Show activity timeline"""
+    """Show activity timeline."""
     try:
         settings = Settings(data_dir=data_dir if data_dir else Settings().data_dir)
         store = Store(settings, password)
@@ -198,20 +190,73 @@ def timeline(
         asyncio.set_event_loop(loop)
 
         try:
-            timeline_data = loop.run_until_complete(_get_timeline_data(store, days))
+            timeline_data = loop.run_until_complete(get_timeline_data(store, days))
             _display_timeline(timeline_data, days)
         finally:
             loop.close()
 
     except Exception as e:
         console.print(f"[red]Error: {e!s}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
+
+
+@app.command()
+def live(
+    refresh_rate: int = typer.Option(
+        5, "--refresh", "-r", help="Refresh rate in seconds"
+    ),
+    data_dir: Path = typer.Option(None, "--data-dir", help="Data directory"),
+):
+    """Live activity dashboard."""
+    console.print("[bold green]🔴 Live Activity Monitor[/bold green]")
+    console.print("[dim]Press Ctrl+C to exit[/dim]\n")
+
+    try:
+        settings = Settings(data_dir=data_dir if data_dir else Settings().data_dir)
+        store = Store(settings, password=None)
+
+        with console.screen():
+            while True:
+                try:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+
+                    stats = loop.run_until_complete(get_enhanced_stats(store, 1))
+
+                    console.clear()
+                    console.print(
+                        f"[bold blue]🚀 Live Dashboard[/bold blue] - "
+                        f"Updated: {datetime.now().strftime('%H:%M:%S')}"
+                    )
+                    console.print(
+                        f"Keystrokes today: [green]{stats['totals'].total_keystrokes:,}[/green]"
+                    )
+                    console.print(
+                        f"Windows opened: [yellow]{stats['totals'].total_windows:,}[/yellow]"
+                    )
+
+                    if stats["processes"]:
+                        top_app = stats["processes"][0]
+                        console.print(
+                            f"Most active: [cyan]{top_app.name}[/cyan] "
+                            f"({top_app.keystroke_count:,} keystrokes)"
+                        )
+
+                    loop.close()
+
+                    import time
+
+                    time.sleep(refresh_rate)
+
+                except KeyboardInterrupt:
+                    break
+
+    except Exception as e:
+        console.print(f"[red]Error: {e!s}[/red]")
 
 
 def _display_enhanced_stats(stats: dict, hourly_data: dict[int, int], days: int):
-    """Display enhanced statistics with rich visualizations"""
-
-    # Header with emoji and styling
+    """Display enhanced statistics with rich visualizations."""
     header = Panel(
         Align.center(
             f"[bold blue]🚀 Selfspy Enhanced Analytics[/bold blue]\n"
@@ -222,12 +267,10 @@ def _display_enhanced_stats(stats: dict, hourly_data: dict[int, int], days: int)
     console.print(header)
     console.print()
 
-    # Insights panels
     insights = create_insights_panel(stats, days)
     console.print(Columns(insights, equal=True))
     console.print()
 
-    # Activity heatmap
     if hourly_data:
         heatmap = create_time_heatmap(hourly_data)
         console.print(
@@ -235,7 +278,6 @@ def _display_enhanced_stats(stats: dict, hourly_data: dict[int, int], days: int)
         )
         console.print()
 
-    # Enhanced totals table
     totals_table = Table(title="📈 Overall Statistics", box=None)
     totals_table.add_column("Metric", style="cyan", width=20)
     totals_table.add_column("Value", style="green", justify="right")
@@ -267,7 +309,6 @@ def _display_enhanced_stats(stats: dict, hourly_data: dict[int, int], days: int)
     console.print(totals_table)
     console.print()
 
-    # Top applications bar chart
     if stats["processes"]:
         app_data = [
             (proc.name, proc.keystroke_count or 0) for proc in stats["processes"][:10]
@@ -276,7 +317,6 @@ def _display_enhanced_stats(stats: dict, hourly_data: dict[int, int], days: int)
         console.print(app_chart)
         console.print()
 
-    # Detailed process table with more info
     if stats["processes"]:
         process_table = Table(title="📊 Detailed Application Statistics")
         process_table.add_column("Application", style="cyan")
@@ -286,7 +326,7 @@ def _display_enhanced_stats(stats: dict, hourly_data: dict[int, int], days: int)
         process_table.add_column("First Seen", style="dim")
         process_table.add_column("Last Seen", style="dim")
 
-        for proc in stats["processes"][:15]:  # Show top 15
+        for proc in stats["processes"][:15]:
             first_seen = (
                 proc.first_seen.strftime("%m/%d %H:%M") if proc.first_seen else "N/A"
             )
@@ -307,7 +347,7 @@ def _display_enhanced_stats(stats: dict, hourly_data: dict[int, int], days: int)
 
 
 def _display_timeline(timeline_data, days: int):
-    """Display activity timeline"""
+    """Display activity timeline."""
     console.print(
         Panel(
             Align.center(
@@ -337,65 +377,11 @@ def _display_timeline(timeline_data, days: int):
             keystroke_info = (
                 f" ({row.keystrokes:,} keystrokes)" if row.keystrokes > 0 else ""
             )
-            activity_info = f"[green]{row.process_name}[/green]: {row.title[:50]}{'...' if len(row.title) > 50 else ''}{keystroke_info}"
+            activity_info = (
+                f"[green]{row.process_name}[/green]: "
+                f"{row.title[:50]}{'...' if len(row.title) > 50 else ''}"
+                f"{keystroke_info}"
+            )
             hour_node.add(activity_info)
 
     console.print(tree)
-
-
-# Add to the main stats app
-@app.command()
-def live(
-    refresh_rate: int = typer.Option(
-        5, "--refresh", "-r", help="Refresh rate in seconds"
-    ),
-    data_dir: Path = typer.Option(None, "--data-dir", help="Data directory"),
-):
-    """Live activity dashboard"""
-    console.print("[bold green]🔴 Live Activity Monitor[/bold green]")
-    console.print("[dim]Press Ctrl+C to exit[/dim]\n")
-
-    try:
-        settings = Settings(data_dir=data_dir if data_dir else Settings().data_dir)
-        store = Store(settings, password=None)
-
-        with console.screen():
-            while True:
-                try:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-
-                    stats = loop.run_until_complete(_get_enhanced_stats(store, 1))
-
-                    console.clear()
-                    console.print(
-                        f"[bold blue]🚀 Live Dashboard[/bold blue] - Updated: {datetime.now().strftime('%H:%M:%S')}"
-                    )
-                    console.print(
-                        f"Keystrokes today: [green]{stats['totals'].total_keystrokes:,}[/green]"
-                    )
-                    console.print(
-                        f"Windows opened: [yellow]{stats['totals'].total_windows:,}[/yellow]"
-                    )
-
-                    if stats["processes"]:
-                        top_app = stats["processes"][0]
-                        console.print(
-                            f"Most active: [cyan]{top_app.name}[/cyan] ({top_app.keystroke_count:,} keystrokes)"
-                        )
-
-                    loop.close()
-
-                    import time
-
-                    time.sleep(refresh_rate)
-
-                except KeyboardInterrupt:
-                    break
-
-    except Exception as e:
-        console.print(f"[red]Error: {e!s}[/red]")
-
-
-if __name__ == "__main__":
-    app()
