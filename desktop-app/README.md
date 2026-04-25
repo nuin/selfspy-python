@@ -119,3 +119,9 @@ All widget versions can access the same Selfspy data:
 Choose the implementation that best fits your needs:
 - **Python**: Easy to modify and extend
 - **Native**: Best performance and battery life
+
+## Phase 1 Refactor Note
+
+After the Phase 1 package refactor (`src/` → `src/selfspy/`), these widgets'
+import paths are broken. They will be modernized in Phase 3 to import directly
+from the `selfspy` package. Until then, do not run them against a Phase 1+ tree.
