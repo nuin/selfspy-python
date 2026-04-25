@@ -2,14 +2,6 @@
 Tests for database models
 """
 
-import sys
-from pathlib import Path
-
-# Add src to Python path
-src_path = str(Path(__file__).parent.parent / "src")
-if src_path not in sys.path:
-    sys.path.append(src_path)
-
 from selfspy.storage import Process, Window
 
 

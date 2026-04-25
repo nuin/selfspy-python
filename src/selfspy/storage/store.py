@@ -144,7 +144,9 @@ class Store:
         # Fernet handles padding internally via PKCS7
         return self.cipher.encrypt(text.encode())
 
-    async def start_session(self, hostname: str = None, platform: str = None) -> int:
+    async def start_session(
+        self, hostname: str | None = None, platform: str | None = None
+    ) -> int:
         """Start a new monitoring session"""
         import socket
         import sys

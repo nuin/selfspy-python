@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 logger = structlog.get_logger()
 
 
-def run(monitor: "Monitor", *, use_tui: bool = True) -> None:
+def run(monitor: Monitor, *, use_tui: bool = True) -> None:
     """Run a monitor to completion with signal handling.
 
     Owns the asyncio event loop entry point. Installs SIGINT/SIGTERM

@@ -101,6 +101,9 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-ra -q --cov=selfspy"
 asyncio_mode = "auto"
+markers = [
+    "macos: tests that require macOS (skipped on other platforms)",
+]
 
 [tool.coverage.run]
 source = ["src/selfspy"]
@@ -109,6 +112,10 @@ source = ["src/selfspy"]
 line-length = 88
 target-version = "py312"
 src = ["src", "tests"]
+extend-exclude = [
+    "desktop-app",  # legacy widgets, deferred to Phase 3
+    "alembic",      # autogen migrations + Mako templates
+]
 
 [tool.ruff.lint]
 select = [
@@ -121,12 +128,17 @@ select = [
     "RUF",  # ruff-specific
 ]
 ignore = [
-    "E501",  # line length (handled by formatter)
-    "B008",  # function calls in defaults (Typer pattern)
+    "E501",   # line length (handled by formatter)
+    "B008",   # function calls in defaults (Typer pattern)
+    "B027",   # empty abstract method (intentional design in platform/base.py)
+    "RUF006", # store create_task ref (we use fire-and-forget tasks intentionally)
+    "SIM105", # try/except/pass vs contextlib.suppress (stylistic)
+    "SIM117", # nested with vs single with (readability preference)
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["B011"]  # asserts allowed in tests
+"tests/**/*.py" = ["B011", "F841"]  # asserts + unused vars (e.g., `as pilot`) in tests
+"src/selfspy/tui/**/*.py" = ["RUF012"]  # Textual reactive class attrs are intentional
 
 [tool.ruff.format]
 quote-style = "double"

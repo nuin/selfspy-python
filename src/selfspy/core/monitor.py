@@ -13,10 +13,10 @@ from typing import Any
 import structlog
 from pynput import mouse
 
-from .config import Settings
 from ..storage import Store
 from ..tracking import TerminalTracker
 from ..tracking.platform.input_tracker import InputTracker
+from .config import Settings
 
 logger = structlog.get_logger()
 
