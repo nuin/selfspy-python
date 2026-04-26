@@ -9,11 +9,11 @@ import pytest
 # on platforms where these aren't available (e.g., headless Linux CI).
 pytest.importorskip("AppKit")
 
-from sqlalchemy import select  # noqa: E402
+from sqlalchemy import select
 
-from selfspy.core import Settings  # noqa: E402
-from selfspy.core.monitor import Monitor  # noqa: E402
-from selfspy.storage import Click, Keys, Store  # noqa: E402
+from selfspy.core import Settings
+from selfspy.core.monitor import Monitor
+from selfspy.storage import Click, Keys, Store
 
 pytestmark = pytest.mark.macos
 
