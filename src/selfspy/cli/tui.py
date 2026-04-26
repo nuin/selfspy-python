@@ -5,7 +5,9 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from ..core import Monitor, Settings, run_monitor
+from ..core import Settings
+from ..core.lifecycle import run as run_monitor
+from ..core.monitor import Monitor
 from ..storage import Store, get_password
 from ..tracking import check_and_request_permissions
 
